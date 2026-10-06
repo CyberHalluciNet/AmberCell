@@ -1,0 +1,17 @@
+# Stage-6 — HTTP scanner / trap path policies.
+policy_id: http-alert.v1
+svc: http
+description: Alert on trap admin probes and POST abuse volume.
+triggers:
+  - match:
+      event: http.trap_probe
+    action: alert
+    severity: medium
+  - match:
+      event: http.post
+    action: annotate
+    severity: low
+  - match:
+      event: http.upload
+    action: alert
+    severity: medium

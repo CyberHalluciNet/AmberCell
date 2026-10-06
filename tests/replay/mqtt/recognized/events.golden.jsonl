@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"mqtt.connect","svc":"mqtt","provider_id":"mosquitto","session_id":"mq_golden","event_id":"evt_golden_mqtt_1","ts":"2026-10-06T09:00:02.000000000Z","cell_id":"mqtt-cell-01","collector_id":"mqtt-collector-a"}

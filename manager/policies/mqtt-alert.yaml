@@ -1,0 +1,17 @@
+# Stage-5 — MQTT pub/sub abuse policies.
+policy_id: mqtt-alert.v1
+svc: mqtt
+description: Alert on anonymous CONNECT and high-value topic publish/subscribe.
+triggers:
+  - match:
+      event: mqtt.connect
+    action: alert
+    severity: low
+  - match:
+      event: mqtt.publish
+    action: alert
+    severity: medium
+  - match:
+      event: mqtt.subscribe
+    action: alert
+    severity: low

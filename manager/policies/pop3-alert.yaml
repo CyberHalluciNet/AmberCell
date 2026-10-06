@@ -1,0 +1,25 @@
+# Stage-2 — POP3 AI alert + rebuild policies
+policy_id: pop3-alert.v1
+svc: pop3
+description: >
+  Alert on auth abuse and high-value mailbox RETR/DELE; rebuild on mailbox drift when idle.
+triggers:
+  - match:
+      event: auth
+      ok: false
+    action: alert
+    severity: medium
+  - match:
+      event: retr
+      high_value_mailbox: true
+    action: alert
+    severity: high
+  - match:
+      event: dele
+    action: alert
+    severity: medium
+  - match:
+      note: mailbox seed drift vs seed_manifest
+    action: snapshot_then_rebuild
+    severity: high
+    dwell_time: 300

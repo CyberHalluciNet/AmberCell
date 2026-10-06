@@ -1,0 +1,13 @@
+# Stage-6 — PostgreSQL COPY PROGRAM staging.
+policy_id: postgres-alert.v1
+svc: postgres
+description: Alert on COPY PROGRAM shell staging attempts.
+triggers:
+  - match:
+      event: postgres.copy_program
+    action: alert
+    severity: high
+  - match:
+      event: postgres.auth_fail
+    action: annotate
+    severity: low

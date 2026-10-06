@@ -1,0 +1,1 @@
+# SMTP collector package

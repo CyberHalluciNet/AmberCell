@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ambercell.dev/schemas/event.v1.schema.json",
+  "title": "AmberCell normalized event v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "seq_id",
+    "event_id",
+    "ts",
+    "svc",
+    "event",
+    "session_id",
+    "cell_id",
+    "collector_id"
+  ],
+  "properties": {
+    "schema_version": { "const": "event.v1" },
+    "seq_id": { "type": "integer", "minimum": 0 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "format": "date-time", "description": "UTC RFC3339 with nanosecond precision when available" },
+    "svc": { "type": "string", "minLength": 1 },
+    "provider_id": { "type": "string" },
+    "event": { "type": "string", "minLength": 1, "description": "Event name or family-qualified name (e.g. auth, ftp.upload)" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "cell_id": { "type": "string", "minLength": 1 },
+    "collector_id": { "type": "string", "minLength": 1 },
+    "src_ip": { "type": "string" },
+    "src_port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "dst_ip": { "type": "string" },
+    "dst_port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "user": { "type": "string" },
+    "ok": { "type": "boolean" },
+    "reason": { "type": "string" },
+    "bytes_in": { "type": "integer", "minimum": 0 },
+    "bytes_out": { "type": "integer", "minimum": 0 },
+    "server_product": { "type": "string" },
+    "server_version": { "type": "string" }
+  }
+}

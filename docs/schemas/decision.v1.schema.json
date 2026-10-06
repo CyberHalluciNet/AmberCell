@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ambercell.dev/schemas/decision.v1.schema.json",
+  "title": "AmberCell AI decision v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "decision_id",
+    "ts",
+    "scope",
+    "target_id",
+    "cell_id",
+    "decision_type",
+    "confidence",
+    "evidence_refs",
+    "policy_refs",
+    "executor_status",
+    "decision_version",
+    "source"
+  ],
+  "properties": {
+    "schema_version": { "const": "decision.v1" },
+    "decision_id": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "format": "date-time" },
+    "scope": {
+      "type": "string",
+      "enum": ["session", "campaign", "cell"]
+    },
+    "target_id": { "type": "string", "minLength": 1 },
+    "cell_id": { "type": "string", "minLength": 1 },
+    "decision_type": {
+      "type": "string",
+      "enum": [
+        "annotate",
+        "suppress",
+        "alert",
+        "snapshot_then_rebuild",
+        "quarantine_then_rebuild"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "reason_summary": { "type": "string" },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "policy_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_action": { "type": "string" },
+    "executor_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected", "executed", "skipped"]
+    },
+    "decision_version": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "string",
+      "enum": ["deterministic_rule", "model_assisted", "operator", "critic"]
+    }
+  }
+}

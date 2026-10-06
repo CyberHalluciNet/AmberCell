@@ -1,0 +1,22 @@
+# AmberCell honeypot sshd — lab/containment only.
+Port 22
+ListenAddress 0.0.0.0
+Protocol 2
+
+PermitRootLogin no
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+UsePAM yes
+X11Forwarding no
+AllowTcpForwarding no
+PermitTunnel no
+MaxAuthTries 6
+LogLevel VERBOSE
+
+Subsystem sftp internal-sftp
+
+Match User admin,support,lure
+    ForceCommand /usr/local/bin/amber-shell.sh
+    X11Forwarding no
+    AllowTcpForwarding no

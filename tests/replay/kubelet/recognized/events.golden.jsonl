@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"kubelet.health_probe","svc":"kubelet","provider_id":"trap","session_id":"kl_golden","event_id":"evt_golden_kubelet_1","ts":"2026-10-06T09:00:10.000000000Z","cell_id":"kubelet-cell-01","collector_id":"kubelet-collector-a"}

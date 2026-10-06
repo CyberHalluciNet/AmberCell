@@ -1,0 +1,17 @@
+# Stage-7 — Docker API trap policies (G4/G8).
+policy_id: dockerapi-alert.v1
+svc: dockerapi
+description: Alert on privileged/host-bind container create intents at the trap.
+triggers:
+  - match:
+      event: dockerapi.container_create_critical
+    action: alert
+    severity: critical
+  - match:
+      event: dockerapi.pull
+    action: annotate
+    severity: medium
+  - match:
+      event: dockerapi.exec
+    action: alert
+    severity: high

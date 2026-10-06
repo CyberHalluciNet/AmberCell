@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"session_open","svc":"ssh","provider_id":"openssh","session_id":"sh_golden","event_id":"evt_golden_ssh_1","ts":"2026-10-06T09:00:00.000000000Z","cell_id":"ssh-cell-01","collector_id":"ssh-collector-a"}

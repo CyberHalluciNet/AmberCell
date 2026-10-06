@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"connect","svc":"http","provider_id":"nginx","session_id":"ht_golden","event_id":"evt_golden_http_1","ts":"2026-10-06T09:00:03.000000000Z","cell_id":"http-cell-01","collector_id":"http-collector-a"}

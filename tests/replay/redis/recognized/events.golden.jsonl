@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"connect","svc":"redis","provider_id":"redis-server","session_id":"rd_golden","event_id":"evt_golden_redis_1","ts":"2026-10-06T09:00:01.000000000Z","cell_id":"redis-cell-01","collector_id":"redis-collector-a"}

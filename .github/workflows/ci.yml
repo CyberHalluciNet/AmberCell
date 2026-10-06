@@ -1,0 +1,29 @@
+name: lab-ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  stage3:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630cea67106f4930342bfa152 # v4.2.2
+      - uses: actions/setup-go@0aaccad813785f4377e17386f8baeb7914168b83 # v5.3.0
+        with:
+          go-version: "1.22"
+      - name: Install Python deps
+        run: pip install jsonschema
+      - name: docker compose config (lab)
+        run: COMPOSE_PROFILES=lab,core docker compose -f compose.yaml -f compose.lab.yaml config >/dev/null
+      - name: Stage-3 checks
+        run: bash tests/test_stage3_ci.sh
+      - name: Stage-4 lab checks
+        run: bash tests/test_stage4_ci.sh
+      - name: Stage-4 verify (lab SKIP G1–G11)
+        run: bash tests/test_stage4_verify.sh
+      - name: Rebuild contract
+        run: bash tests/test_rebuild_contract.sh
+      - name: Isolation stub
+        run: bash tests/test_isolation_linux.sh

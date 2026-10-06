@@ -1,0 +1,28 @@
+# Stage-1 — Telnet AI alert + rebuild policies.
+policy_id: telnet-alert.v1
+svc: telnet
+description: >
+  Alert on shell login and post-login commands; rebuild on egress staging
+  (download-execute correlated with cell egress flows).
+triggers:
+  - match:
+      event: auth
+      ok: true
+    action: alert
+    severity: medium
+    note: shell login
+  - match:
+      event: auth
+      ok: false
+    action: alert
+    severity: medium
+  - match:
+      event: cmd
+    action: alert
+    severity: medium
+    note: post-login PTY command (secondary to raw transcript)
+  - match:
+      event: egress_staging
+    action: snapshot_then_rebuild
+    severity: high
+    note: download-execute / egress staging

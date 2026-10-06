@@ -1,0 +1,17 @@
+# Stage-7 — Ollama mock / LLM API abuse policies.
+policy_id: ollama-alert.v1
+svc: ollama
+description: Annotate pulls; alert on prompt/tool-invoke attempts.
+triggers:
+  - match:
+      event: ollama.pull
+    action: annotate
+    severity: low
+  - match:
+      event: ollama.prompt
+    action: alert
+    severity: medium
+  - match:
+      event: ollama.tool_invoke
+    action: alert
+    severity: high

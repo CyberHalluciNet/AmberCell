@@ -1,0 +1,17 @@
+# Stage-6 — SMB share abuse and uploads.
+policy_id: smb-alert.v1
+svc: smb
+description: Alert on auth and share enumeration; rebuild on suspicious uploads (via artifacts).
+triggers:
+  - match:
+      event: smb.auth
+    action: annotate
+    severity: low
+  - match:
+      event: smb.share_enum
+    action: alert
+    severity: medium
+  - match:
+      event: smb.file_open
+    action: alert
+    severity: medium

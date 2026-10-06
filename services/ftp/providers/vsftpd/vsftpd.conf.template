@@ -1,0 +1,47 @@
+# AmberCell FTP provider — vsftpd (Stage-0B)
+# Rendered at container start: @PASV_ADDRESS@ ← AMBER_FTP_PASV_ADDRESS
+
+listen=YES
+listen_ipv6=NO
+listen_port=21
+background=NO
+
+# Active Mode off — PASV/EPSV only (plan 1.1)
+port_enable=NO
+connect_from_port_20=NO
+ftp_data_port=20
+
+anonymous_enable=YES
+anon_root=/var/ftp
+no_anon_password=YES
+hide_ids=YES
+anon_world_readable_only=NO
+anon_upload_enable=YES
+anon_mkdir_write_enable=NO
+
+local_enable=YES
+write_enable=YES
+local_umask=022
+chroot_local_user=YES
+allow_writeable_chroot=YES
+
+# Allow-list for local logins only; anonymous uses the ftp account and must not
+# be gated by userlist_deny=NO (that list is ftpuser-only).
+userlist_enable=YES
+userlist_file=/etc/vsftpd/user_list
+userlist_deny=YES
+
+pasv_enable=YES
+pasv_min_port=30000
+pasv_max_port=30049
+pasv_address=@PASV_ADDRESS@
+
+secure_chroot_dir=/var/run/vsftpd/empty
+
+# Container-friendly logging (read_only root; no /var/log file required)
+xferlog_enable=NO
+vsftpd_log_file=/proc/self/fd/2
+dual_log_enable=NO
+
+# Avoid nested seccomp fighting Docker's profile
+seccomp_sandbox=NO

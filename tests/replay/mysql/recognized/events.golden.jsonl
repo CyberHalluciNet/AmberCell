@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"connect","svc":"mysql","provider_id":"mysql","session_id":"my_golden","event_id":"evt_golden_mysql_1","ts":"2026-10-06T09:00:04.000000000Z","cell_id":"mysql-cell-01","collector_id":"mysql-collector-a"}

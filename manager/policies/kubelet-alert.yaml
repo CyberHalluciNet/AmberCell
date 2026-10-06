@@ -1,0 +1,13 @@
+# Stage-7 — kubelet trap policies.
+policy_id: kubelet-alert.v1
+svc: kubelet
+description: Alert on unauth exec and pod-spec abuse against fake kubelet.
+triggers:
+  - match:
+      event: kubelet.exec
+    action: alert
+    severity: high
+  - match:
+      event: kubelet.pod_spec
+    action: alert
+    severity: medium

@@ -1,0 +1,100 @@
+#!/usr/sbin/nft -f
+# AmberCell ingress — production profile (Stage-0B stub)
+#
+# DNAT attacker-facing SMTP (tcp/25), POP3 (tcp/110), FTP control (tcp/21),
+# passive range (30000-30049), and Telnet (tcp/23) to collector static addresses on ambernet.
+#
+# Placeholders (set before apply):
+#   $WAN_IFACE       — public NIC (e.g. eth0, ens3)
+#   $CELL_FTP_IP     — ftp-collector on ambernet (default 172.30.30.10)
+#   $CELL_TELNET_IP  — telnet-collector on ambernet (default 172.30.40.10)
+#
+# Lab profile: skip this file; use Compose published ports instead (see compose.yaml).
+# Requires: net.ipv4.ip_forward=1 and rp_filter on WAN + ambernet (ops/sysctl.conf).
+
+define WAN_IFACE = "eth0"
+define CELL_SMTP_IP = 172.30.10.10
+define CELL_POP3_IP = 172.30.20.10
+define CELL_FTP_IP = 172.30.30.10
+define CELL_TELNET_IP = 172.30.40.10
+define CELL_SSH_IP = 172.30.50.10
+define CELL_REDIS_IP = 172.30.60.10
+define CELL_MQTT_IP = 172.30.70.10
+define CELL_HTTP_IP = 172.30.80.10
+define CELL_MYSQL_IP = 172.30.90.10
+define CELL_POSTGRES_IP = 172.30.100.10
+define CELL_SMB_IP = 172.30.110.10
+define CELL_MONGO_IP = 172.30.120.10
+define CELL_ELASTIC_IP = 172.30.130.10
+define CELL_DOCKERAPI_IP = 172.30.140.10
+define CELL_KUBELET_IP = 172.30.150.10
+define CELL_OLLAMA_IP = 172.30.160.10
+# Stage-1: host DNAT for cell DNS → sinkhole on ambermgmt (see ops/dns-sinkhole/)
+define DNS_SINKHOLE_IP = 172.31.10.53
+# Set to the ambernet bridge name (`docker network inspect ambernet -f '{{.Id}}'` / br-*).
+define AMBERNET_IFACE = "br-ambernet"
+
+table inet ambercell {
+	# amberctl quarantine_then_rebuild inserts cell IPs (172.30.x.x).
+	set amber_quarantine {
+		type ipv4_addr
+		flags interval
+		elements = { }
+	}
+
+	# Drop AFTER DNAT so set members are cell IPs (WAN traffic still has public daddr
+	# before dstnat). Priority dstnat+10 sees post-DNAT destination.
+	chain quarantine_postdnat {
+		type filter hook prerouting priority dstnat + 10; policy accept;
+		ct state new ip daddr @amber_quarantine drop
+	}
+
+	# Also drop forwarded new flows to quarantined cells (covers local/host paths).
+	chain quarantine_forward {
+		type filter hook forward priority filter - 10; policy accept;
+		ct state new ip daddr @amber_quarantine drop
+	}
+
+	chain ingress {
+		type nat hook prerouting priority dstnat; policy accept;
+
+		# Cell DNS → sinkhole (Stage-1): cells cannot use external udp/53.
+		# Cells have no route to ambermgmt; host DNAT intercepts udp/53 before forward egress.
+		iifname $AMBERNET_IFACE ip saddr 172.30.0.0/16 udp dport 53 dnat to $DNS_SINKHOLE_IP:53
+
+		# SMTP / POP3 (core Submit)
+		iifname $WAN_IFACE tcp dport 25 dnat to $CELL_SMTP_IP:25
+		iifname $WAN_IFACE tcp dport 110 dnat to $CELL_POP3_IP:110
+
+		# FTP control
+		iifname $WAN_IFACE tcp dport 21 dnat to $CELL_FTP_IP:21
+
+		# FTP passive data (inbound to advertised ports)
+		iifname $WAN_IFACE tcp dport 30000-30049 dnat to $CELL_FTP_IP
+
+		# Telnet (core Submit)
+		iifname $WAN_IFACE tcp dport 23 dnat to $CELL_TELNET_IP:23
+
+		# Wave A (Stage-5) — operator admin SSH must NOT listen on public 22 (G9).
+		iifname $WAN_IFACE tcp dport 22 dnat to $CELL_SSH_IP:22
+		iifname $WAN_IFACE tcp dport 6379 dnat to $CELL_REDIS_IP:6379
+		iifname $WAN_IFACE tcp dport 1883 dnat to $CELL_MQTT_IP:1883
+
+		# Wave B (Stage-6) — HTTP/SQL ingress (distinct from cell egress tcp/80 allowlist)
+		iifname $WAN_IFACE tcp dport { 80, 443 } dnat to $CELL_HTTP_IP
+		iifname $WAN_IFACE tcp dport 3306 dnat to $CELL_MYSQL_IP:3306
+		iifname $WAN_IFACE tcp dport 5432 dnat to $CELL_POSTGRES_IP:5432
+
+		# Wave C (Stage-6) — SMB + NoSQL
+		iifname $WAN_IFACE tcp dport 445 dnat to $CELL_SMB_IP:445
+		iifname $WAN_IFACE tcp dport 27017 dnat to $CELL_MONGO_IP:27017
+		iifname $WAN_IFACE tcp dport 9200 dnat to $CELL_ELASTIC_IP:9200
+
+		# Wave D (Stage-7) — orchestration traps (mock API only; G4/G8)
+		iifname $WAN_IFACE tcp dport 2375 dnat to $CELL_DOCKERAPI_IP:2375
+		iifname $WAN_IFACE tcp dport 10250 dnat to $CELL_KUBELET_IP:10250
+
+		# Wave E (Stage-7) — Ollama / LLM API surface
+		iifname $WAN_IFACE tcp dport 11434 dnat to $CELL_OLLAMA_IP:11434
+	}
+}

@@ -1,0 +1,41 @@
+# Production containment overlay — seccomp + AppArmor for Stage-1 hi-cells.
+#
+# Linux only. Load AppArmor profiles first:
+#   sudo apparmor_parser -r apparmor/ftp.profile apparmor/telnet.profile
+#
+# Usage:
+#   COMPOSE_PROFILES=production,core docker compose \
+#     -f compose.yaml -f compose.containment.yaml up -d --build
+#
+# Lab/Darwin: do NOT use this file (profiles may reject or break Docker Desktop).
+
+services:
+  ftp-hi:
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:${AMBER_ROOT:-.}/seccomp/ftp.json
+      - apparmor:ambercell-ftp-hi
+
+  telnet-hi:
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:${AMBER_ROOT:-.}/seccomp/telnet.json
+      - apparmor:ambercell-telnet-hi
+
+  ssh-hi:
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:${AMBER_ROOT:-.}/seccomp/ssh.json
+      - apparmor:ambercell-ssh-hi
+
+  redis-hi:
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:${AMBER_ROOT:-.}/seccomp/redis.json
+      - apparmor:ambercell-redis-hi
+
+  smb-hi:
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:${AMBER_ROOT:-.}/seccomp/smb.json
+      - apparmor:ambercell-smb-hi

@@ -1,0 +1,13 @@
+# Stage-6 — Elasticsearch bulk delete / ransom notes.
+policy_id: elastic-alert.v1
+svc: elastic
+description: Alert on bulk delete and ransom-note patterns.
+triggers:
+  - match:
+      event: elastic.bulk_delete
+    action: alert
+    severity: high
+  - match:
+      event: elastic.ransom_note
+    action: snapshot_then_rebuild
+    severity: high

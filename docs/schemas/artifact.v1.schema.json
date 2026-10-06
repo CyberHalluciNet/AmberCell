@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ambercell.dev/schemas/artifact.v1.schema.json",
+  "title": "AmberCell artifact v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "seq_id",
+    "artifact_id",
+    "ts",
+    "svc",
+    "session_id",
+    "cell_id",
+    "collector_id",
+    "sha256",
+    "byte_length"
+  ],
+  "properties": {
+    "schema_version": { "const": "artifact.v1" },
+    "seq_id": { "type": "integer", "minimum": 0 },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "format": "date-time" },
+    "svc": { "type": "string", "minLength": 1 },
+    "provider_id": { "type": "string" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "cell_id": { "type": "string", "minLength": 1 },
+    "collector_id": { "type": "string", "minLength": 1 },
+    "kind": {
+      "type": "string",
+      "enum": ["upload", "message", "mailbox", "core", "other"]
+    },
+    "path": { "type": "string" },
+    "filename": { "type": "string" },
+    "content_type": { "type": "string" },
+    "byte_length": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "yara_tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

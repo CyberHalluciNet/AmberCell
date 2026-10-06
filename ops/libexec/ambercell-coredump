@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Scoped core dump pipe handler for AmberCell (Stage-3).
+#
+# Install as:
+#   kernel.core_pattern = |/usr/local/libexec/ambercell-coredump %p %s %c %d %P
+#
+# Writes ONLY when the crashing process appears to belong to an AmberCell
+# cgroup / comm prefix. Never use a bare directory core_pattern under
+# /var/ambercell — see ops/coredump-scoped.md.
+set -euo pipefail
+
+PID="${1:-}"
+SIG="${2:-}"
+CORE_LIMIT="${3:-}"
+DUMPABLE="${4:-}"
+GLOBAL_PID="${5:-$PID}"
+
+OUT_DIR="${AMBER_CORE_DIR:-/var/ambercell/artifacts/cores}"
+mkdir -p "$OUT_DIR"
+
+json_escape() {
+  # Minimal JSON string escape (no python dependency in the pipe path).
+  local s=${1-}
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\t'/\\t}
+  printf '%s' "$s"
+}
+
+comm=""
+cgroup=""
+if [[ -n "$GLOBAL_PID" && -r "/proc/$GLOBAL_PID/comm" ]]; then
+  comm="$(tr -d '\0' <"/proc/$GLOBAL_PID/comm" || true)"
+fi
+if [[ -n "$GLOBAL_PID" && -r "/proc/$GLOBAL_PID/cgroup" ]]; then
+  cgroup="$(tr '\n' ' ' <"/proc/$GLOBAL_PID/cgroup" || true)"
+  cgroup="${cgroup:0:512}"
+fi
+
+# Accept AmberCell containers / helper names only.
+allow=0
+case "$comm" in
+  *ambercell*|*vsftpd*|*postfix*|*dovecot*|*telnetd*|*sshd*|*smbd*|*redis-server*)
+    allow=1
+    ;;
+esac
+if echo "$cgroup" | grep -Eqi 'ambercell|ftp-hi|telnet-hi|smtp-hi|pop3-hi|ssh-hi|redis-hi|smb-hi'; then
+  allow=1
+fi
+
+# Always drain stdin so the kernel pipe does not block.
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/ambercell-core.XXXXXX")"
+trap 'rm -rf "$tmpdir"' EXIT
+core_blob="$tmpdir/core"
+cat >"$core_blob"
+
+if [[ "$allow" -ne 1 ]]; then
+  # Drop non-AmberCell cores (do not retain).
+  exit 0
+fi
+
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+safe_comm="$(printf '%s' "${comm:-unknown}" | tr -c 'A-Za-z0-9._-' '_')"
+base="${OUT_DIR}/core.${safe_comm}.${GLOBAL_PID}.${ts}"
+if ! mv "$core_blob" "${base}.core"; then
+  echo "ambercell-coredump: failed to write ${base}.core" >&2
+  exit 1
+fi
+chmod 0640 "${base}.core" || true
+
+comm_j="$(json_escape "$comm")"
+cgroup_j="$(json_escape "$cgroup")"
+cat >"${base}.json" <<EOF
+{
+  "schema_version": "coredump.meta.v1",
+  "ts": "${ts}",
+  "pid": "$(json_escape "$PID")",
+  "global_pid": "$(json_escape "$GLOBAL_PID")",
+  "signal": "$(json_escape "$SIG")",
+  "core_limit": "$(json_escape "$CORE_LIMIT")",
+  "dumpable": "$(json_escape "$DUMPABLE")",
+  "comm": "${comm_j}",
+  "cgroup_snip": "${cgroup_j}",
+  "path": "${base}.core"
+}
+EOF
+chmod 0640 "${base}.json" || true
+exit 0

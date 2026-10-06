@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event_id":"evt_golden_smtp_ehlo","ts":"2026-10-05T08:50:00.000000001Z","svc":"smtp","provider_id":"postfix","event":"ehlo","session_id":"sm_golden01","cell_id":"smtp-cell-01","collector_id":"smtp-collector-a","src_ip":"203.0.113.10","src_port":52000,"dst_ip":"172.30.10.10","dst_port":25,"host":"drill.client","stage":"EHLO"}

@@ -1,0 +1,32 @@
+# Stage-1 — FTP AI alert + rebuild policies (deterministic sample_decision.py).
+policy_id: ftp-alert.v1
+svc: ftp
+description: >
+  Alert on auth failure and executable/script uploads; rebuild recommendation
+  on seed/image drift or egress staging evidence.
+triggers:
+  - match:
+      event: auth
+      ok: false
+    action: alert
+    severity: medium
+  - match:
+      event: stor
+      path_glob: "*.{sh,exe,elf,bin,py,pl}"
+    action: alert
+    severity: high
+    note: executable or script upload
+  - match:
+      event: auth
+      ok: true
+    action: alert
+    severity: low
+    note: successful lure login
+  - match:
+      event: egress_staging
+    action: snapshot_then_rebuild
+    severity: high
+  - match:
+      note: provider or seed drift vs seed_manifest
+    action: snapshot_then_rebuild
+    severity: high

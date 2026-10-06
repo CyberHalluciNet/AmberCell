@@ -1,0 +1,61 @@
+#!/usr/sbin/nft -f
+# AmberCell egress — production profile (Stage-1)
+#
+# Filter traffic sourced from ambernet (172.30.0.0/16). Cells reach the Internet
+# only through this allowlist. DNS is permitted as udp/53 toward the host path
+# that DNATs to the sinkhole on ambermgmt (172.31.10.0/24) — cells do not route
+# to ambermgmt directly.
+#
+# Before FTP PASV smoke on production hosts, unload the conntrack FTP helper:
+#   modprobe -r nf_conntrack_ftp
+#
+# Load after nftables/ingress.nft (same table name; incremental chain add).
+#
+# Lab / Darwin: do NOT apply this file. Production kill bars G1–G11 are Linux-only
+# and are NOT claimed green on macOS lab hosts.
+
+define AMBERNET = 172.30.0.0/16
+
+table inet ambercell {
+	chain egress {
+		type filter hook forward priority filter; policy drop;
+
+		ct state established,related accept
+
+		# IPv6 must not leave ambernet (G1 / edge case 1.3)
+		meta nfproto ipv6 ip saddr $AMBERNET drop
+
+		# DNS — host DNAT sends this to the sinkhole (see Stage-1 RUNBOOK)
+		ip saddr $AMBERNET udp dport 53 accept
+
+		# Cloud / link-local metadata (SSRF)
+		ip saddr $AMBERNET ip daddr 169.254.169.254 drop
+
+		# RFC1918 destinations except ambernet itself (lateral / internal scan)
+		ip saddr $AMBERNET ip daddr 10.0.0.0/8 drop
+		ip saddr $AMBERNET ip daddr 192.168.0.0/16 drop
+		ip saddr $AMBERNET ip daddr 172.16.0.0/12 ip daddr != 172.30.0.0/16 drop
+
+		# Host / bridge / gateway addresses — operator must substitute before apply.
+		# Example (uncomment and set):
+		# define HOST_IPV4 = 203.0.113.10
+		# define DOCKER0 = 172.17.0.1
+		# ip saddr $AMBERNET ip daddr $HOST_IPV4 drop
+		# ip saddr $AMBERNET ip daddr $DOCKER0 drop
+		# ip saddr $AMBERNET ip daddr 172.30.0.1 drop
+
+		# No outbound SMTP relay (G10)
+		ip saddr $AMBERNET tcp dport 25 drop
+
+		# Max ~10 concurrent *new* egress TCP connections per cell source IP.
+		# Inbound PASV data channels are client→cell and are not new egress SYNs.
+		# Requires nftables with ct count support (verify: nft -c -f this file).
+		ip saddr $AMBERNET tcp flags syn / syn ct count over 10 drop
+
+		# ~2 Mbit/s (~250 kB/s) egress shaping on allowlisted ports (nft meter).
+		ip saddr $AMBERNET tcp dport { 80, 443 } \
+			meter amber_bw size 1024 { ip saddr limit rate 250 kbytes/second burst 128 kbytes } accept
+
+		ip saddr $AMBERNET limit rate 30/minute log prefix "ambercell-egress-drop: " drop
+	}
+}

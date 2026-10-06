@@ -1,0 +1,17 @@
+# Stage-6 — MySQL auth and outfile staging.
+policy_id: mysql-alert.v1
+svc: mysql
+description: Alert on auth abuse and SELECT INTO OUTFILE patterns.
+triggers:
+  - match:
+      event: mysql.outfile
+    action: alert
+    severity: high
+  - match:
+      event: mysql.auth_fail
+    action: annotate
+    severity: low
+  - match:
+      event: mysql.query
+    action: annotate
+    severity: low

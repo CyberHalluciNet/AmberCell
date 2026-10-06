@@ -1,0 +1,27 @@
+# Stage-5 — SSH AI alert + rebuild policies.
+policy_id: ssh-alert.v1
+svc: ssh
+description: >
+  Alert on successful shell auth and PTY commands; rebuild on egress staging
+  correlated with cell egress flows. Admin SSH must not use public tcp/22 (G9).
+triggers:
+  - match:
+      event: auth
+      ok: true
+    action: alert
+    severity: high
+    note: ssh shell login
+  - match:
+      event: auth
+      ok: false
+    action: alert
+    severity: medium
+    note: ssh brute force
+  - match:
+      event: cmd
+    action: alert
+    severity: medium
+  - match:
+      event: egress_staging
+    action: snapshot_then_rebuild
+    severity: high

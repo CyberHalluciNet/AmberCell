@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"ollama.tags","svc":"ollama","provider_id":"mock","session_id":"ol_golden","event_id":"evt_golden_ollama_1","ts":"2026-10-06T09:00:11.000000000Z","cell_id":"ollama-cell-01","collector_id":"ollama-collector-a"}

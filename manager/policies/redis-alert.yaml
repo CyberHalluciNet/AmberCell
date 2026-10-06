@@ -1,0 +1,19 @@
+# Stage-5 — Redis persistence / file-drop policies.
+policy_id: redis-alert.v1
+svc: redis
+description: Alert on CONFIG/persistence probes and hashed file drops.
+triggers:
+  - match:
+      event: redis.config
+    action: alert
+    severity: high
+    note: redis persistence chain
+  - match:
+      event: redis.file_drop
+    action: snapshot_then_rebuild
+    severity: high
+  - match:
+      event: redis.command
+      command: FLUSHALL
+    action: alert
+    severity: medium

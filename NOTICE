@@ -1,0 +1,27 @@
+AmberCell
+Copyright 2026 AmberCell Contributors
+
+This product is licensed under the AmberCell Public Source License Version 1.0
+(see LICENSE). It is source-available, not OSI-approved open source.
+
+Third-party components
+----------------------
+AmberCell orchestrates and documents containers that may pull third-party
+images and daemons. Those components retain their own licenses and copyrights.
+Operators must review and comply with each upstream license before deployment.
+
+Notable upstreams commonly referenced by this project (non-exhaustive):
+
+  - Postfix / OpenSMTPD / Exim / Sendmail — respective MTA licenses
+  - Dovecot / Cyrus / Courier — respective POP3/IMAP licenses
+  - vsftpd / ProFTPD / Pure-FTPd — respective FTP server licenses
+  - OpenSSH / Dropbear — respective SSH server licenses
+  - Nginx / Apache httpd / Caddy / lighttpd — respective HTTP server licenses
+  - BusyBox / inetutils telnetd — respective Telnet daemon licenses
+  - Redis, Mosquitto, MariaDB/MySQL, PostgreSQL, Samba, MongoDB,
+    Elasticsearch, Ollama — respective project licenses
+  - Docker / containerd / runc / Compose — respective container runtime licenses
+
+Image digests and SPDX identifiers for pinned builds will be recorded in
+release SBOMs (CycloneDX or SPDX) when releases are published. This NOTICE is
+a pointer only; it does not restate full third-party license texts.

@@ -1,0 +1,113 @@
+# Lab overlay — published ports for laptop/CI (bind localhost only).
+# Usage:
+#   COMPOSE_PROFILES=lab,core docker compose -f compose.yaml -f compose.lab.yaml up -d
+# Production (nftables DNAT, no Compose ports):
+#   COMPOSE_PROFILES=production,core docker compose -f compose.yaml up -d
+
+services:
+  ftp-collector:
+    ports:
+      - "127.0.0.1:${AMBER_FTP_HOST_PORT:-21}:21"
+      - "127.0.0.1:30000-30049:30000-30049"
+    environment:
+      # Lab DNAT/proxy may rewrite destinations; production should leave unset/0.
+      AMBER_FTP_RELAX_DST: ${AMBER_FTP_RELAX_DST:-1}
+
+  ftp-hi:
+    environment:
+      # Lab-only PASV advertise (same-host published ports). Production must set public IP.
+      AMBER_FTP_PASV_ADDRESS: ${AMBER_FTP_PASV_ADDRESS:-127.0.0.1}
+
+  telnet-collector:
+    ports:
+      - "127.0.0.1:${AMBER_TELNET_HOST_PORT:-2323}:23"
+    environment:
+      AMBER_TELNET_RELAX_DST: ${AMBER_TELNET_RELAX_DST:-1}
+
+  smtp-collector:
+    ports:
+      # Override with AMBER_LAB_BIND=0.0.0.0 for remote/Spot labs (lock SG to operator IP).
+      - "${AMBER_LAB_BIND:-127.0.0.1}:${AMBER_SMTP_HOST_PORT:-2525}:25"
+    environment:
+      AMBER_SMTP_RELAX_DST: ${AMBER_SMTP_RELAX_DST:-1}
+
+  pop3-collector:
+    ports:
+      - "${AMBER_LAB_BIND:-127.0.0.1}:${AMBER_POP3_HOST_PORT:-1110}:110"
+    environment:
+      AMBER_POP3_RELAX_DST: ${AMBER_POP3_RELAX_DST:-1}
+
+  # Wave A — default localhost. Honeypot SSH is NOT host admin SSH (G9).
+  ssh-collector:
+    ports:
+      - "${AMBER_LAB_BIND:-127.0.0.1}:${AMBER_SSH_HOST_PORT:-2222}:22"
+    environment:
+      AMBER_SSH_RELAX_DST: ${AMBER_SSH_RELAX_DST:-1}
+
+  redis-collector:
+    ports:
+      - "127.0.0.1:${AMBER_REDIS_HOST_PORT:-6379}:6379"
+    environment:
+      AMBER_REDIS_RELAX_DST: ${AMBER_REDIS_RELAX_DST:-1}
+
+  mqtt-collector:
+    ports:
+      - "127.0.0.1:${AMBER_MQTT_HOST_PORT:-1883}:1883"
+    environment:
+      AMBER_MQTT_RELAX_DST: ${AMBER_MQTT_RELAX_DST:-1}
+
+  http-collector:
+    ports:
+      - "127.0.0.1:${AMBER_HTTP_HOST_PORT:-8080}:80"
+    environment:
+      AMBER_HTTP_RELAX_DST: ${AMBER_HTTP_RELAX_DST:-1}
+
+  mysql-collector:
+    ports:
+      - "127.0.0.1:${AMBER_MYSQL_HOST_PORT:-3306}:3306"
+    environment:
+      AMBER_MYSQL_RELAX_DST: ${AMBER_MYSQL_RELAX_DST:-1}
+
+  postgres-collector:
+    ports:
+      - "127.0.0.1:${AMBER_POSTGRES_HOST_PORT:-5432}:5432"
+    environment:
+      AMBER_POSTGRES_RELAX_DST: ${AMBER_POSTGRES_RELAX_DST:-1}
+
+  smb-collector:
+    ports:
+      - "127.0.0.1:${AMBER_SMB_HOST_PORT:-445}:445"
+    environment:
+      AMBER_SMB_RELAX_DST: ${AMBER_SMB_RELAX_DST:-1}
+
+  mongo-collector:
+    ports:
+      - "127.0.0.1:${AMBER_MONGO_HOST_PORT:-27017}:27017"
+    environment:
+      AMBER_MONGO_RELAX_DST: ${AMBER_MONGO_RELAX_DST:-1}
+
+  elastic-collector:
+    ports:
+      - "127.0.0.1:${AMBER_ELASTIC_HOST_PORT:-9200}:9200"
+    environment:
+      AMBER_ELASTIC_RELAX_DST: ${AMBER_ELASTIC_RELAX_DST:-1}
+
+  # Wave D — orchestration traps (G4/G8: mocks only, no host socket mount)
+  dockerapi-collector:
+    ports:
+      - "127.0.0.1:${AMBER_DOCKERAPI_HOST_PORT:-2375}:2375"
+    environment:
+      AMBER_DOCKERAPI_RELAX_DST: ${AMBER_DOCKERAPI_RELAX_DST:-1}
+
+  kubelet-collector:
+    ports:
+      - "127.0.0.1:${AMBER_KUBELET_HOST_PORT:-10250}:10250"
+    environment:
+      AMBER_KUBELET_RELAX_DST: ${AMBER_KUBELET_RELAX_DST:-1}
+
+  # Wave E — Ollama mock (no large model pulls)
+  ollama-collector:
+    ports:
+      - "127.0.0.1:${AMBER_OLLAMA_HOST_PORT:-11434}:11434"
+    environment:
+      AMBER_OLLAMA_RELAX_DST: ${AMBER_OLLAMA_RELAX_DST:-1}

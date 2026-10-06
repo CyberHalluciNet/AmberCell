@@ -1,0 +1,18 @@
+{
+  "schema_version": "decision.v1",
+  "decision_id": "dec_01K",
+  "ts": "2026-10-05T08:33:00.000000000Z",
+  "scope": "session",
+  "target_id": "fp_01HXY",
+  "cell_id": "ftp-cell-01",
+  "decision_type": "alert",
+  "confidence": "medium",
+  "severity": "low",
+  "reason_summary": "repeated auth failures on lure account",
+  "evidence_refs": ["evt_01JABC"],
+  "policy_refs": ["credential-abuse.v1"],
+  "recommended_action": "alert",
+  "executor_status": "pending",
+  "decision_version": "2026-10-05.1",
+  "source": "deterministic_rule"
+}

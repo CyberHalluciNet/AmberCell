@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"dockerapi.version_probe","svc":"dockerapi","provider_id":"trap","session_id":"dk_golden","event_id":"evt_golden_dockerapi_1","ts":"2026-10-06T09:00:09.000000000Z","cell_id":"dockerapi-cell-01","collector_id":"dockerapi-collector-a"}

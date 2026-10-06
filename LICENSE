@@ -1,0 +1,111 @@
+AmberCell Public Source License
+Version 1.0
+
+Copyright 2026 AmberCell Contributors
+
+This is a source-available license. It is not an OSI-approved open source
+license and is not Apache-2.0 / GPL compatible.
+
+------------------------------------------------------------------------------
+1. Definitions
+
+"Software" means the AmberCell source code, binaries, documentation, and
+other materials in this repository that are marked as licensed under this
+License.
+
+"Licensor" means the copyright holders of the Software.
+
+"You" means an individual or legal entity exercising rights under this License.
+
+"Commercial Product" means hardware, software, a virtual appliance, a container
+image, a managed/hosted service, or any other product or service that You offer
+or sell to third parties (for a fee or as part of a paid offering) and that
+includes, embeds, depends on, or is substantially derived from the Software for
+its functionality.
+
+"Internal Use" means use of the Software for Your own purposes (including inside
+a company), where You are not redistributing the Software to third parties as
+part of a Commercial Product.
+
+------------------------------------------------------------------------------
+2. Grant for free use (including Internal Use)
+
+Subject to this License, Licensor grants You a worldwide, royalty-free,
+non-exclusive license to:
+
+  (a) use, run, and evaluate the Software for Internal Use (personal, research,
+      education, or internal business operations);
+  (b) copy and modify the Software for Internal Use;
+  (c) distribute unmodified or modified source of the Software to others under
+      this same License, provided You include this License and NOTICE with every
+      copy, and You do not misrepresent the origin of the Software.
+
+No trademark rights are granted. "AmberCell" and related marks remain
+Licensor's property.
+
+------------------------------------------------------------------------------
+3. Commercial Product / OEM — paid license required
+
+You may NOT, without a separate written commercial license from Licensor:
+
+  (a) include, embed, bundle, or redistribute the Software (in source or binary
+      form) as part of a Commercial Product;
+  (b) offer the Software (or a substantial derivative) to third parties as a
+      hosted, managed, or multi-tenant service;
+  (c) sell the Software itself, or sell access to a product whose primary value
+      is the Software, without such a commercial license.
+
+Internal Use by a company (running AmberCell in Your own lab/environment
+and not redistributing it as a product) does NOT by itself require a commercial
+license under this License.
+
+To purchase a commercial / OEM license, see COMMERCIAL.md in this repository.
+
+------------------------------------------------------------------------------
+4. Contributions
+
+By submitting a contribution (including pull requests), You assign to Licensor
+the right to use, modify, and relicense Your contribution as part of the
+Software under this License and under any commercial licenses Licensor offers,
+unless You and Licensor agree otherwise in writing before the contribution is
+merged. You represent that You have the right to make the contribution.
+
+------------------------------------------------------------------------------
+5. No warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+------------------------------------------------------------------------------
+6. Defensive use only
+
+The Software is a defensive honeypot research and operations platform. You must
+not use it for unauthorized access, retaliation, exploitation, or any activity
+that violates applicable law or third-party rights.
+
+------------------------------------------------------------------------------
+7. Termination
+
+If You violate this License, Your rights under it terminate automatically.
+Sections 5 and 6 survive termination.
+
+------------------------------------------------------------------------------
+8. Versioning and reservation of rights for future versions
+
+Licensor may publish future versions of the Software under different license
+terms at Licensor's sole discretion. The license governing any particular copy
+of the Software is the license text distributed with that copy.
+
+Rights granted under this License for a version of the Software as released are
+perpetual and irrevocable for that version (subject to Section 7). Redistribution
+under Section 2(c) must use the license version accompanying the copy being
+redistributed.
+
+Licensor intends to provide reasonable advance notice before publishing a new
+major version under materially different terms. This Section is expectation-
+setting and does not claw back rights already granted for released versions.

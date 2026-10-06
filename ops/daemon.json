@@ -1,0 +1,13 @@
+{
+  "_comment": "AmberCell Docker daemon.json stub (Stage-0A). Merge carefully with existing daemon config; restart dockerd after changes.",
+  "_userns_remap": "Enable userns-remap for production containment baseline, e.g. \"userns-remap\": \"default\". Ensure subordinate uid/gid maps exist.",
+  "_log_driver": "Prefer json-file with size rotation so honeypot syslog floods cannot fill the host disk.",
+  "_live_restore": "Optional; do not rely on live-restore as a substitute for amberctl teardown order.",
+  "_iptables": "Production AmberCell uses nftables on the host; avoid Compose-published ports on the production profile. Do not disable Docker iptables without a reviewed networking plan.",
+
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "5"
+  }
+}

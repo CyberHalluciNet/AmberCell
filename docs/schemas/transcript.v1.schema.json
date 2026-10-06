@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ambercell.dev/schemas/transcript.v1.schema.json",
+  "title": "AmberCell transcript v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "seq_id",
+    "transcript_id",
+    "ts",
+    "svc",
+    "session_id",
+    "cell_id",
+    "collector_id",
+    "encoding",
+    "sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "transcript.v1" },
+    "seq_id": { "type": "integer", "minimum": 0 },
+    "transcript_id": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "format": "date-time" },
+    "svc": { "type": "string", "minLength": 1 },
+    "provider_id": { "type": "string" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "cell_id": { "type": "string", "minLength": 1 },
+    "collector_id": { "type": "string", "minLength": 1 },
+    "encoding": { "type": "string", "enum": ["utf-8", "binary-base64", "pty"] },
+    "path": { "type": "string", "description": "Relative path under /var/ambercell/transcripts/" },
+    "byte_length": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "closed": { "type": "boolean" }
+  }
+}

@@ -1,0 +1,64 @@
+# Local env and secrets
+.env
+.env.*
+!.env.example
+/etc/ambercell/
+
+# Local working plan (not for remote)
+plan.md
+docs/DESIGN.md
+
+# Authoritative / published evidence on host (never commit)
+/var/ambercell/
+.ambercell-data/
+.ambercell-smoke/
+.ambercell-*-smoke/
+.ambercell-*-smoke-test/
+.ambercell-*-debug/
+.ambercell-mail-*/
+.ambercell-lab/
+.aws-spot/
+.redis-drop-smoke/
+amberctl/amberctl.linux
+
+# Local evidence mirrors (runtime output, not source packages)
+/evidence/
+/deaddrop/
+/raw-flows/
+/jsonl/
+/pcap/
+/pcaps/
+/artifacts/
+/transcripts/
+/alerts/
+*.pcap
+*.pcapng
+
+# Seed maps and canary material generated on host
+**/seed_manifest.local.json
+**/seed-maps/
+**/seeds/generated/
+
+# Go / build
+bin/
+dist/
+*.exe
+*.test
+*.out
+coverage.out
+vendor/
+amberctl/amberctl
+amberctl/amberctl.bin
+amberctl/amberctl.exe
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Python / misc local
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,28 @@
+# Stage-2 — SMTP AI alert + rebuild policies
+policy_id: smtp-alert.v1
+svc: smtp
+description: >
+  Alert on brute-force AUTH, relay probes, and inbound DATA to sinkhole recipients;
+  rebuild recommendation on queue drift when idle.
+triggers:
+  - match:
+      event: auth
+      ok: false
+    action: alert
+    severity: medium
+    note: brute force / credential probe
+  - match:
+      event: relay_denied
+    action: alert
+    severity: high
+    note: unauthorized relay probe
+  - match:
+      event: data
+    action: alert
+    severity: medium
+    note: message artifact captured
+  - match:
+      note: queue or seed drift vs seed_manifest
+    action: snapshot_then_rebuild
+    severity: high
+    dwell_time: 300

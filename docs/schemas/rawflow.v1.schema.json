@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ambercell.dev/schemas/rawflow.v1.schema.json",
+  "title": "AmberCell raw flow v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "seq_id",
+    "session_id",
+    "svc",
+    "cell_id",
+    "collector_id",
+    "src_ip",
+    "src_port",
+    "dst_ip",
+    "dst_port",
+    "transport",
+    "first_seen",
+    "last_seen",
+    "parser_status",
+    "classification_status"
+  ],
+  "properties": {
+    "schema_version": { "const": "rawflow.v1" },
+    "seq_id": { "type": "integer", "minimum": 0 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "svc": { "type": "string", "minLength": 1 },
+    "provider_id": { "type": "string" },
+    "cell_id": { "type": "string", "minLength": 1 },
+    "collector_id": { "type": "string", "minLength": 1 },
+    "src_ip": { "type": "string", "minLength": 1 },
+    "src_port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "dst_ip": { "type": "string", "minLength": 1 },
+    "dst_port": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "transport": { "type": "string", "enum": ["tcp", "udp", "icmp", "other"] },
+    "first_seen": { "type": "string", "format": "date-time", "description": "UTC RFC3339 with nanosecond precision when available" },
+    "last_seen": { "type": "string", "format": "date-time" },
+    "bytes_in": { "type": "integer", "minimum": 0 },
+    "bytes_out": { "type": "integer", "minimum": 0 },
+    "packet_count_in": { "type": "integer", "minimum": 0 },
+    "packet_count_out": { "type": "integer", "minimum": 0 },
+    "pcap_ref": { "type": "string" },
+    "parser_status": {
+      "type": "string",
+      "enum": ["recognized", "partial", "unknown", "error"]
+    },
+    "classification_status": {
+      "type": "string",
+      "enum": ["known", "unknown", "malformed"]
+    },
+    "protocol_guess": { "type": "string" }
+  }
+}

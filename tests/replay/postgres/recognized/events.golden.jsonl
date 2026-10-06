@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"connect","svc":"postgres","provider_id":"postgres","session_id":"po_golden","event_id":"evt_golden_postgres_1","ts":"2026-10-06T09:00:05.000000000Z","cell_id":"postgres-cell-01","collector_id":"postgres-collector-a"}

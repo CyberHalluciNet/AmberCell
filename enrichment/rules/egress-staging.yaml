@@ -1,0 +1,11 @@
+# Stage-1 enrichment stub — upload+exec / egress staging clusters.
+rule_id: egress-staging.v1
+version: "2026-10-06.1"
+match:
+  events: [stor, egress_staging, cmd]
+attack:
+  techniques: ["T1105", "T1059"]
+  mapping_mode: heuristic
+engage:
+  activities: ["lure", "detect"]
+confidence: medium

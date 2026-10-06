@@ -1,0 +1,1 @@
+{"schema_version":"event.v1","seq_id":1,"event":"connect","svc":"smb","provider_id":"smb","session_id":"sm_golden","event_id":"evt_golden_smb_1","ts":"2026-10-06T09:00:06.000000000Z","cell_id":"smb-cell-01","collector_id":"smb-collector-a"}

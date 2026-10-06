@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ambercell.dev/schemas/enrichment.v1.schema.json",
+  "title": "AmberCell enrichment v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "enrichment_id",
+    "ts",
+    "evidence_refs",
+    "mapping_mode",
+    "confidence"
+  ],
+  "properties": {
+    "schema_version": { "const": "enrichment.v1" },
+    "enrichment_id": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "format": "date-time" },
+    "svc": { "type": "string" },
+    "session_id": { "type": "string" },
+    "cell_id": { "type": "string" },
+    "evidence_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "attack_techniques": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "ATT&CK technique IDs"
+    },
+    "engage_activities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Engage activity IDs"
+    },
+    "mapping_mode": {
+      "type": "string",
+      "enum": ["rule", "heuristic", "model_assisted", "manual"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "notes": { "type": "string" }
+  }
+}

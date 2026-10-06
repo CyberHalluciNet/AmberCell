@@ -1,0 +1,6 @@
+# Optional marker overlay for remote/Spot labs.
+# Prefer AMBER_LAB_BIND=0.0.0.0 in compose.lab.yaml (ports merge appends; do not
+# re-declare ports here). Enable with AMBER_LAB_EXPOSE=1 so amberctl loads this
+# file after compose.lab.yaml. Always lock the host SG to the operator CIDR.
+
+services: {}

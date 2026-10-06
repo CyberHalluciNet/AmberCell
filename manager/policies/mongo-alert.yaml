@@ -1,0 +1,13 @@
+# Stage-6 — MongoDB wiper / ransom patterns.
+policy_id: mongo-alert.v1
+svc: mongo
+description: Alert on wipe-style commands.
+triggers:
+  - match:
+      event: mongo.wipe
+    action: snapshot_then_rebuild
+    severity: high
+  - match:
+      event: mongo.connect
+    action: annotate
+    severity: low

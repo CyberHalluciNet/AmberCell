@@ -1,0 +1,1530 @@
+# AmberCell Compose — Stage-0B FTP proof cell (production-shaped base)
+#
+# Profiles:
+#   core         — FTP, Telnet, SMTP, POP3 cells
+#   lab          — marker; use with compose.lab.yaml for localhost published ports
+#   production   — marker; use nftables DNAT only (nftables/*.nft), no Compose ports
+#   wave-a..e    — expansion waves (later stages)
+#
+# Lab (laptop/CI):
+#   COMPOSE_PROFILES=lab,core docker compose -f compose.yaml -f compose.lab.yaml up -d --build
+#   COMPOSE_PROFILES=lab,core,wave-a …  # Stage-5 SSH/Redis/MQTT (see compose.lab.yaml ports)
+#   COMPOSE_PROFILES=lab,wave-b,wave-c …  # Stage-6 HTTP/SQL + SMB/NoSQL
+#   COMPOSE_PROFILES=lab,wave-d,wave-e …  # Stage-7 traps + Ollama mock
+#
+# Production (Linux host + nftables):
+#   COMPOSE_PROFILES=production,core docker compose -f compose.yaml up -d --build
+#   # then apply nftables/ingress.nft + nftables/egress.nft
+#
+# amberctl up/down defaults to the lab file pair when COMPOSE_PROFILES includes lab.
+
+name: ambercell
+
+networks:
+  ambernet:
+    name: ambernet
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "false"
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+  ambermgmt:
+    name: ambermgmt
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.10.0/24
+
+volumes:
+  # Shared upload landing (hi writes; collector hashes via UDS queue — not host inotify).
+  ftp-incoming:
+    name: ambercell-ftp-incoming
+  # FIFO log handoff (collector opens read end; *-hi tees daemon logs).
+  mail-log-fifo:
+    name: ambercell-mail-log-fifo
+  wave-log-fifo:
+    name: ambercell-wave-log-fifo
+  ssh-uploads:
+    name: ambercell-ssh-uploads
+  redis-data:
+    name: ambercell-redis-data
+  http-uploads:
+    name: ambercell-http-uploads
+  mysql-data:
+    name: ambercell-mysql-data
+  postgres-data:
+    name: ambercell-postgres-data
+  smb-shares:
+    name: ambercell-smb-shares
+  mongo-data:
+    name: ambercell-mongo-data
+  elastic-data:
+    name: ambercell-elastic-data
+
+services:
+  ftp-collector:
+    profiles: ["core"]
+    build:
+      context: .
+      dockerfile: collectors/ftp/Dockerfile
+    image: ambercell-ftp-collector:local
+    container_name: ambercell-ftp-collector
+    init: true
+    # Prefer collector under OOM (edge 2.2). May be ignored under userns/cap_drop.
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      # NET_RAW required for tcpdump; NET_ADMIN kept for -i any / cooked capture on some kernels.
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      # Evidence ONLY on collector (never mount into *-hi). No deaddrop bind.
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      # Shared with ftp-hi for real sha256 on STOR (collector-side watch → UDS queue).
+      - ftp-incoming:/mnt/hi-uploads
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_FTP_PROVIDER: ${AMBER_FTP_PROVIDER:-vsftpd}
+      AMBER_FTP_CELL_IP: "172.30.30.10"
+      AMBER_FTP_CELL_ID: ftp-cell-01
+      AMBER_FTP_COLLECTOR_ID: ftp-collector-a
+      AMBER_FTP_UPLOAD_DIR: /mnt/hi-uploads
+      AMBER_ARTIFACT_SOCK: /var/ambercell/run/artifact-ftp.sock
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_FTP_HI_DIGEST: ${AMBER_FTP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-ftp-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      # Production default: strict cell-IP matching. Lab overlay sets RELAX_DST=1.
+      AMBER_FTP_RELAX_DST: ${AMBER_FTP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.30.10
+    # No Compose ports here — production uses nftables DNAT.
+    # Lab ports: compose.lab.yaml (127.0.0.1 only).
+    labels:
+      ambercell.svc: ftp
+      ambercell.role: collector
+
+  ftp-hi:
+    profiles: ["core"]
+    build:
+      context: services/ftp/providers/${AMBER_FTP_PROVIDER:-vsftpd}
+      dockerfile: Dockerfile
+    image: ambercell-ftp-hi-${AMBER_FTP_PROVIDER:-vsftpd}:local
+    container_name: ambercell-ftp-hi
+    # Shares collector netns — no separate IP, no host evidence mount, no ports.
+    network_mode: "service:ftp-collector"
+    depends_on:
+      ftp-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    # vsftpd needs bind + privilege drop + chroot; keep the set minimal for the daemon.
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+      - SYS_CHROOT
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+      # Production: also apply compose.containment.yaml (seccomp + AppArmor).
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run/vsftpd:rw,noexec,nosuid,size=8m
+    volumes:
+      # Shared upload path with ftp-collector (real sha256; not host evidence mount).
+      - ftp-incoming:/var/ftp/incoming
+    environment:
+      AMBER_FTP_PROVIDER: ${AMBER_FTP_PROVIDER:-vsftpd}
+      # No lab default here — production must set public IPv4.
+      # Lab overlay (compose.lab.yaml) sets 127.0.0.1 when unset.
+      AMBER_FTP_PASV_ADDRESS: ${AMBER_FTP_PASV_ADDRESS:-}
+      # Propagate profile markers so vsftpd entrypoint can refuse lab PASV in production.
+      COMPOSE_PROFILES: ${COMPOSE_PROFILES:-}
+      AMBER_PROFILE: ${AMBER_PROFILE:-}
+    labels:
+      ambercell.svc: ftp
+      ambercell.role: hi
+
+  telnet-collector:
+    profiles: ["core"]
+    build:
+      context: .
+      dockerfile: collectors/telnet/Dockerfile
+    image: ambercell-telnet-collector:local
+    container_name: ambercell-telnet-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_TELNET_PROVIDER: ${AMBER_TELNET_PROVIDER:-busybox-telnetd}
+      AMBER_TELNET_CELL_IP: "172.30.40.10"
+      AMBER_TELNET_CELL_ID: telnet-cell-01
+      AMBER_TELNET_COLLECTOR_ID: telnet-collector-a
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_TELNET_HI_DIGEST: ${AMBER_TELNET_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-telnet-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_TELNET_RELAX_DST: ${AMBER_TELNET_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.40.10
+    labels:
+      ambercell.svc: telnet
+      ambercell.role: collector
+
+  smtp-collector:
+    profiles: ["core"]
+    build:
+      context: .
+      dockerfile: collectors/smtp/Dockerfile
+    image: ambercell-smtp-collector:local
+    container_name: ambercell-smtp-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - mail-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_SMTP_PROVIDER: ${AMBER_SMTP_PROVIDER:-postfix}
+      AMBER_SMTP_CELL_IP: "172.30.10.10"
+      AMBER_SMTP_CELL_ID: smtp-cell-01
+      AMBER_SMTP_COLLECTOR_ID: smtp-collector-a
+      AMBER_SMTP_LOG_FIFO: /run/amber/log/smtp.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_SMTP_HI_DIGEST: ${AMBER_SMTP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-smtp-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_SMTP_RELAX_DST: ${AMBER_SMTP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.10.10
+    labels:
+      ambercell.svc: smtp
+      ambercell.role: collector
+
+  smtp-hi:
+    profiles: ["core"]
+    build:
+      context: services/smtp/providers/${AMBER_SMTP_PROVIDER:-postfix}
+      dockerfile: Dockerfile
+    image: ambercell-smtp-hi-${AMBER_SMTP_PROVIDER:-postfix}:local
+    container_name: ambercell-smtp-hi
+    network_mode: "service:smtp-collector"
+    depends_on:
+      smtp-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    # Postfix needs writable spool + config helpers; keep tmpfs-backed runtime paths.
+    read_only: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/spool/postfix:rw,nosuid,size=128m
+      - /var/lib/postfix:rw,nosuid,size=32m
+      - /var/mail:rw,nosuid,size=32m
+    volumes:
+      - mail-log-fifo:/run/amber/log
+    environment:
+      AMBER_SMTP_PROVIDER: ${AMBER_SMTP_PROVIDER:-postfix}
+      AMBER_SMTP_LOG_FIFO: /run/amber/log/smtp.fifo
+    labels:
+      ambercell.svc: smtp
+      ambercell.role: hi
+
+  pop3-collector:
+    profiles: ["core"]
+    build:
+      context: .
+      dockerfile: collectors/pop3/Dockerfile
+    image: ambercell-pop3-collector:local
+    container_name: ambercell-pop3-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - mail-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_POP3_PROVIDER: ${AMBER_POP3_PROVIDER:-dovecot}
+      AMBER_POP3_CELL_IP: "172.30.20.10"
+      AMBER_POP3_CELL_ID: pop3-cell-01
+      AMBER_POP3_COLLECTOR_ID: pop3-collector-a
+      AMBER_POP3_LOG_FIFO: /run/amber/log/pop3.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_POP3_HI_DIGEST: ${AMBER_POP3_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-pop3-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_POP3_RELAX_DST: ${AMBER_POP3_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.20.10
+    labels:
+      ambercell.svc: pop3
+      ambercell.role: collector
+
+  pop3-hi:
+    profiles: ["core"]
+    build:
+      context: services/pop3/providers/${AMBER_POP3_PROVIDER:-dovecot}
+      dockerfile: Dockerfile
+    image: ambercell-pop3-hi-${AMBER_POP3_PROVIDER:-dovecot}:local
+    container_name: ambercell-pop3-hi
+    network_mode: "service:pop3-collector"
+    depends_on:
+      pop3-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - SYS_CHROOT
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run/dovecot:rw,noexec,nosuid,size=16m
+      - /var/mail:rw,nosuid,size=32m
+      - /var/lib/dovecot:rw,nosuid,size=16m
+    volumes:
+      - mail-log-fifo:/run/amber/log
+    environment:
+      AMBER_POP3_PROVIDER: ${AMBER_POP3_PROVIDER:-dovecot}
+      AMBER_POP3_LOG_FIFO: /run/amber/log/pop3.fifo
+    labels:
+      ambercell.svc: pop3
+      ambercell.role: hi
+
+  telnet-hi:
+    profiles: ["core"]
+    build:
+      context: services/telnet/providers/${AMBER_TELNET_PROVIDER:-busybox-telnetd}
+      dockerfile: Dockerfile
+    image: ambercell-telnet-hi-${AMBER_TELNET_PROVIDER:-busybox-telnetd}:local
+    container_name: ambercell-telnet-hi
+    network_mode: "service:telnet-collector"
+    depends_on:
+      telnet-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - SYS_CHROOT
+    security_opt:
+      - no-new-privileges:true
+      # Production: also apply compose.containment.yaml (seccomp + AppArmor).
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run/telnetd:rw,noexec,nosuid,size=8m
+      - /jail/tmp:rw,noexec,nosuid,size=16m
+    environment:
+      AMBER_TELNET_PROVIDER: ${AMBER_TELNET_PROVIDER:-busybox-telnetd}
+      AMBER_TELNET_BIND: "0.0.0.0"
+    labels:
+      ambercell.svc: telnet
+      ambercell.role: hi
+
+  ssh-collector:
+    profiles: ["wave-a"]
+    build:
+      context: .
+      dockerfile: collectors/ssh/Dockerfile
+    image: ambercell-ssh-collector:local
+    container_name: ambercell-ssh-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+      - ssh-uploads:/mnt/hi-uploads
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_SSH_PROVIDER: ${AMBER_SSH_PROVIDER:-openssh}
+      AMBER_SSH_CELL_IP: "172.30.50.10"
+      AMBER_SSH_CELL_ID: ssh-cell-01
+      AMBER_SSH_COLLECTOR_ID: ssh-collector-a
+      AMBER_SSH_LOG_FIFO: /run/amber/log/ssh.fifo
+      AMBER_SSH_UPLOAD_DIR: /mnt/hi-uploads
+      AMBER_ARTIFACT_SOCK: /var/ambercell/run/artifact-ssh.sock
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_SSH_HI_DIGEST: ${AMBER_SSH_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-ssh-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_SSH_RELAX_DST: ${AMBER_SSH_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.50.10
+    labels:
+      ambercell.svc: ssh
+      ambercell.role: collector
+
+  ssh-hi:
+    profiles: ["wave-a"]
+    build:
+      context: services/ssh/providers/${AMBER_SSH_PROVIDER:-openssh}
+      dockerfile: Dockerfile
+    image: ambercell-ssh-hi-${AMBER_SSH_PROVIDER:-openssh}:local
+    container_name: ambercell-ssh-hi
+    network_mode: "service:ssh-collector"
+    depends_on:
+      ssh-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - SYS_CHROOT
+      - DAC_OVERRIDE
+      - CHOWN
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /run/sshd:rw,noexec,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - ssh-uploads:/mnt/uploads
+    environment:
+      AMBER_SSH_PROVIDER: ${AMBER_SSH_PROVIDER:-openssh}
+      AMBER_SSH_LOG_FIFO: /run/amber/log/ssh.fifo
+      AMBER_SSH_UPLOAD_DIR: /mnt/uploads
+    labels:
+      ambercell.svc: ssh
+      ambercell.role: hi
+
+  redis-collector:
+    profiles: ["wave-a"]
+    build:
+      context: .
+      dockerfile: collectors/redis/Dockerfile
+    image: ambercell-redis-collector:local
+    container_name: ambercell-redis-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+      - redis-data:/mnt/redis-data
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_REDIS_PROVIDER: ${AMBER_REDIS_PROVIDER:-redis-server}
+      AMBER_REDIS_CELL_IP: "172.30.60.10"
+      AMBER_REDIS_CELL_ID: redis-cell-01
+      AMBER_REDIS_COLLECTOR_ID: redis-collector-a
+      AMBER_REDIS_LOG_FIFO: /run/amber/log/redis.fifo
+      AMBER_REDIS_DROP_DIR: /mnt/redis-data
+      AMBER_ARTIFACT_SOCK: /var/ambercell/run/artifact-redis.sock
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_REDIS_HI_DIGEST: ${AMBER_REDIS_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-redis-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_REDIS_RELAX_DST: ${AMBER_REDIS_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.60.10
+    labels:
+      ambercell.svc: redis
+      ambercell.role: collector
+
+  redis-hi:
+    profiles: ["wave-a"]
+    build:
+      context: services/redis/providers/${AMBER_REDIS_PROVIDER:-redis-server}
+      dockerfile: Dockerfile
+    image: ambercell-redis-hi-${AMBER_REDIS_PROVIDER:-redis-server}:local
+    container_name: ambercell-redis-hi
+    network_mode: "service:redis-collector"
+    depends_on:
+      redis-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - redis-data:/data
+    environment:
+      AMBER_REDIS_PROVIDER: ${AMBER_REDIS_PROVIDER:-redis-server}
+      AMBER_REDIS_LOG_FIFO: /run/amber/log/redis.fifo
+    labels:
+      ambercell.svc: redis
+      ambercell.role: hi
+
+  mqtt-collector:
+    profiles: ["wave-a"]
+    build:
+      context: .
+      dockerfile: collectors/mqtt/Dockerfile
+    image: ambercell-mqtt-collector:local
+    container_name: ambercell-mqtt-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_MQTT_PROVIDER: ${AMBER_MQTT_PROVIDER:-mosquitto}
+      AMBER_MQTT_CELL_IP: "172.30.70.10"
+      AMBER_MQTT_CELL_ID: mqtt-cell-01
+      AMBER_MQTT_COLLECTOR_ID: mqtt-collector-a
+      AMBER_MQTT_LOG_FIFO: /run/amber/log/mqtt.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_MQTT_HI_DIGEST: ${AMBER_MQTT_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-mqtt-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_MQTT_RELAX_DST: ${AMBER_MQTT_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.70.10
+    labels:
+      ambercell.svc: mqtt
+      ambercell.role: collector
+
+  mqtt-hi:
+    profiles: ["wave-a"]
+    build:
+      context: services/mqtt/providers/${AMBER_MQTT_PROVIDER:-mosquitto}
+      dockerfile: Dockerfile
+    image: ambercell-mqtt-hi-${AMBER_MQTT_PROVIDER:-mosquitto}:local
+    container_name: ambercell-mqtt-hi
+    network_mode: "service:mqtt-collector"
+    depends_on:
+      mqtt-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_MQTT_PROVIDER: ${AMBER_MQTT_PROVIDER:-mosquitto}
+      AMBER_MQTT_LOG_FIFO: /run/amber/log/mqtt.fifo
+    labels:
+      ambercell.svc: mqtt
+      ambercell.role: hi
+
+  http-collector:
+    profiles: ["wave-b"]
+    build:
+      context: .
+      dockerfile: collectors/http/Dockerfile
+    image: ambercell-http-collector:local
+    container_name: ambercell-http-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+      - http-uploads:/mnt/http-uploads
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_HTTP_PROVIDER: ${AMBER_HTTP_PROVIDER:-nginx}
+      AMBER_HTTP_CELL_IP: "172.30.80.10"
+      AMBER_HTTP_CELL_ID: http-cell-01
+      AMBER_HTTP_COLLECTOR_ID: http-collector-a
+      AMBER_HTTP_LOG_FIFO: /run/amber/log/http.fifo
+      AMBER_HTTP_UPLOAD_DIR: /mnt/http-uploads
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_HTTP_HI_DIGEST: ${AMBER_HTTP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-http-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_HTTP_RELAX_DST: ${AMBER_HTTP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.80.10
+    labels:
+      ambercell.svc: http
+      ambercell.role: collector
+
+  http-hi:
+    profiles: ["wave-b"]
+    build:
+      context: services/http/providers/${AMBER_HTTP_PROVIDER:-nginx}
+      dockerfile: Dockerfile
+    image: ambercell-http-hi-${AMBER_HTTP_PROVIDER:-nginx}:local
+    container_name: ambercell-http-hi
+    network_mode: "service:http-collector"
+    depends_on:
+      http-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/cache/nginx:rw,noexec,nosuid,size=32m
+      - /var/run:rw,noexec,nosuid,size=8m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - http-uploads:/var/www/uploads
+    environment:
+      AMBER_HTTP_PROVIDER: ${AMBER_HTTP_PROVIDER:-nginx}
+      AMBER_HTTP_LOG_FIFO: /run/amber/log/http.fifo
+      AMBER_HTTP_UPLOAD_DIR: /var/www/uploads
+    labels:
+      ambercell.svc: http
+      ambercell.role: hi
+
+  mysql-collector:
+    profiles: ["wave-b"]
+    build:
+      context: .
+      dockerfile: collectors/mysql/Dockerfile
+    image: ambercell-mysql-collector:local
+    container_name: ambercell-mysql-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_MYSQL_PROVIDER: ${AMBER_MYSQL_PROVIDER:-mariadb}
+      AMBER_MYSQL_CELL_IP: "172.30.90.10"
+      AMBER_MYSQL_CELL_ID: mysql-cell-01
+      AMBER_MYSQL_COLLECTOR_ID: mysql-collector-a
+      AMBER_MYSQL_LOG_FIFO: /run/amber/log/mysql.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_MYSQL_HI_DIGEST: ${AMBER_MYSQL_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-mysql-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_MYSQL_RELAX_DST: ${AMBER_MYSQL_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.90.10
+    labels:
+      ambercell.svc: mysql
+      ambercell.role: collector
+
+  mysql-hi:
+    profiles: ["wave-b"]
+    build:
+      context: services/mysql/providers/${AMBER_MYSQL_PROVIDER:-mariadb}
+      dockerfile: Dockerfile
+    image: ambercell-mysql-hi-${AMBER_MYSQL_PROVIDER:-mariadb}:local
+    container_name: ambercell-mysql-hi
+    network_mode: "service:mysql-collector"
+    depends_on:
+      mysql-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /var/log/mysql:rw,noexec,nosuid,size=32m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - mysql-data:/var/lib/mysql
+    environment:
+      AMBER_MYSQL_PROVIDER: ${AMBER_MYSQL_PROVIDER:-mariadb}
+      AMBER_MYSQL_LOG_FIFO: /run/amber/log/mysql.fifo
+      MYSQL_ROOT_PASSWORD: ${AMBER_MYSQL_ROOT_PASSWORD:-ambercell_root}
+      MYSQL_DATABASE: corp_app
+    labels:
+      ambercell.svc: mysql
+      ambercell.role: hi
+
+  postgres-collector:
+    profiles: ["wave-b"]
+    build:
+      context: .
+      dockerfile: collectors/postgres/Dockerfile
+    image: ambercell-postgres-collector:local
+    container_name: ambercell-postgres-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_POSTGRES_PROVIDER: ${AMBER_POSTGRES_PROVIDER:-postgresql}
+      AMBER_POSTGRES_CELL_IP: "172.30.100.10"
+      AMBER_POSTGRES_CELL_ID: postgres-cell-01
+      AMBER_POSTGRES_COLLECTOR_ID: postgres-collector-a
+      AMBER_POSTGRES_LOG_FIFO: /run/amber/log/postgres.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_POSTGRES_HI_DIGEST: ${AMBER_POSTGRES_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-postgres-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_POSTGRES_RELAX_DST: ${AMBER_POSTGRES_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.100.10
+    labels:
+      ambercell.svc: postgres
+      ambercell.role: collector
+
+  postgres-hi:
+    profiles: ["wave-b"]
+    build:
+      context: services/postgres/providers/${AMBER_POSTGRES_PROVIDER:-postgresql}
+      dockerfile: Dockerfile
+    image: ambercell-postgres-hi-${AMBER_POSTGRES_PROVIDER:-postgresql}:local
+    container_name: ambercell-postgres-hi
+    network_mode: "service:postgres-collector"
+    depends_on:
+      postgres-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      AMBER_POSTGRES_PROVIDER: ${AMBER_POSTGRES_PROVIDER:-postgresql}
+      AMBER_POSTGRES_LOG_FIFO: /run/amber/log/postgres.fifo
+      POSTGRES_PASSWORD: ${AMBER_POSTGRES_ROOT_PASSWORD:-ambercell_root}
+      POSTGRES_DB: corp_app
+    labels:
+      ambercell.svc: postgres
+      ambercell.role: hi
+
+  smb-collector:
+    profiles: ["wave-c"]
+    build:
+      context: .
+      dockerfile: collectors/smb/Dockerfile
+    image: ambercell-smb-collector:local
+    container_name: ambercell-smb-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+      - smb-shares:/shares
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_SMB_PROVIDER: ${AMBER_SMB_PROVIDER:-samba}
+      AMBER_SMB_CELL_IP: "172.30.110.10"
+      AMBER_SMB_CELL_ID: smb-cell-01
+      AMBER_SMB_COLLECTOR_ID: smb-collector-a
+      AMBER_SMB_LOG_FIFO: /run/amber/log/smb.fifo
+      AMBER_SMB_SHARE_ROOT: /shares
+      AMBER_ARTIFACT_SOCK: /var/ambercell/run/artifact-smb.sock
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_SMB_HI_DIGEST: ${AMBER_SMB_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-smb-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_SMB_RELAX_DST: ${AMBER_SMB_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.110.10
+    labels:
+      ambercell.svc: smb
+      ambercell.role: collector
+
+  smb-hi:
+    profiles: ["wave-c"]
+    build:
+      context: services/smb/providers/${AMBER_SMB_PROVIDER:-samba}
+      dockerfile: Dockerfile
+    image: ambercell-smb-hi-${AMBER_SMB_PROVIDER:-samba}:local
+    container_name: ambercell-smb-hi
+    network_mode: "service:smb-collector"
+    depends_on:
+      smb-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+      # Production: strict seccomp + optional gVisor (see seccomp/smb.json, ops/RUNBOOK.md).
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/lib/samba:rw,noexec,nosuid,size=32m
+      - /var/cache/samba:rw,noexec,nosuid,size=32m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - smb-shares:/shares
+    environment:
+      AMBER_SMB_PROVIDER: ${AMBER_SMB_PROVIDER:-samba}
+      AMBER_SMB_LOG_FIFO: /run/amber/log/smb.fifo
+      AMBER_SMB_SHARE_ROOT: /shares
+    labels:
+      ambercell.svc: smb
+      ambercell.role: hi
+
+  mongo-collector:
+    profiles: ["wave-c"]
+    build:
+      context: .
+      dockerfile: collectors/mongo/Dockerfile
+    image: ambercell-mongo-collector:local
+    container_name: ambercell-mongo-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_MONGO_PROVIDER: ${AMBER_MONGO_PROVIDER:-mongodb}
+      AMBER_MONGO_CELL_IP: "172.30.120.10"
+      AMBER_MONGO_CELL_ID: mongo-cell-01
+      AMBER_MONGO_COLLECTOR_ID: mongo-collector-a
+      AMBER_MONGO_LOG_FIFO: /run/amber/log/mongo.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_MONGO_HI_DIGEST: ${AMBER_MONGO_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-mongo-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_MONGO_RELAX_DST: ${AMBER_MONGO_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.120.10
+    labels:
+      ambercell.svc: mongo
+      ambercell.role: collector
+
+  mongo-hi:
+    profiles: ["wave-c"]
+    build:
+      context: services/mongo/providers/${AMBER_MONGO_PROVIDER:-mongodb}
+      dockerfile: Dockerfile
+    image: ambercell-mongo-hi-${AMBER_MONGO_PROVIDER:-mongodb}:local
+    container_name: ambercell-mongo-hi
+    network_mode: "service:mongo-collector"
+    depends_on:
+      mongo-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - mongo-data:/data/db
+    environment:
+      AMBER_MONGO_PROVIDER: ${AMBER_MONGO_PROVIDER:-mongodb}
+      AMBER_MONGO_LOG_FIFO: /run/amber/log/mongo.fifo
+    labels:
+      ambercell.svc: mongo
+      ambercell.role: hi
+
+  elastic-collector:
+    profiles: ["wave-c"]
+    build:
+      context: .
+      dockerfile: collectors/elastic/Dockerfile
+    image: ambercell-elastic-collector:local
+    container_name: ambercell-elastic-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_ELASTIC_PROVIDER: ${AMBER_ELASTIC_PROVIDER:-elasticsearch}
+      AMBER_ELASTIC_CELL_IP: "172.30.130.10"
+      AMBER_ELASTIC_CELL_ID: elastic-cell-01
+      AMBER_ELASTIC_COLLECTOR_ID: elastic-collector-a
+      AMBER_ELASTIC_LOG_FIFO: /run/amber/log/elastic.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_ELASTIC_HI_DIGEST: ${AMBER_ELASTIC_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-elastic-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_ELASTIC_RELAX_DST: ${AMBER_ELASTIC_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.130.10
+    labels:
+      ambercell.svc: elastic
+      ambercell.role: collector
+
+  elastic-hi:
+    profiles: ["wave-c"]
+    build:
+      context: services/elastic/providers/${AMBER_ELASTIC_PROVIDER:-elasticsearch}
+      dockerfile: Dockerfile
+    image: ambercell-elastic-hi-${AMBER_ELASTIC_PROVIDER:-elasticsearch}:local
+    container_name: ambercell-elastic-hi
+    network_mode: "service:elastic-collector"
+    depends_on:
+      elastic-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 512
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    volumes:
+      - wave-log-fifo:/run/amber/log
+      - elastic-data:/usr/share/elasticsearch/data
+    environment:
+      AMBER_ELASTIC_PROVIDER: ${AMBER_ELASTIC_PROVIDER:-elasticsearch}
+      AMBER_ELASTIC_LOG_FIFO: /run/amber/log/elastic.fifo
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    labels:
+      ambercell.svc: elastic
+      ambercell.role: hi
+
+  dockerapi-collector:
+    profiles: ["wave-d"]
+    build:
+      context: .
+      dockerfile: collectors/dockerapi/Dockerfile
+    image: ambercell-dockerapi-collector:local
+    container_name: ambercell-dockerapi-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_DOCKERAPI_PROVIDER: ${AMBER_DOCKERAPI_PROVIDER:-trap}
+      AMBER_DOCKERAPI_CELL_IP: "172.30.140.10"
+      AMBER_DOCKERAPI_CELL_ID: dockerapi-cell-01
+      AMBER_DOCKERAPI_COLLECTOR_ID: dockerapi-collector-a
+      AMBER_DOCKERAPI_LOG_FIFO: /run/amber/log/dockerapi.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_DOCKERAPI_HI_DIGEST: ${AMBER_DOCKERAPI_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-dockerapi-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_DOCKERAPI_RELAX_DST: ${AMBER_DOCKERAPI_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.140.10
+    labels:
+      ambercell.svc: dockerapi
+      ambercell.role: collector
+      ambercell.trap: "true"
+
+  dockerapi-hi:
+    profiles: ["wave-d"]
+    build:
+      context: services/dockerapi/providers/${AMBER_DOCKERAPI_PROVIDER:-trap}
+      dockerfile: Dockerfile
+    image: ambercell-dockerapi-hi-${AMBER_DOCKERAPI_PROVIDER:-trap}:local
+    container_name: ambercell-dockerapi-hi
+    network_mode: "service:dockerapi-collector"
+    depends_on:
+      dockerapi-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    stop_grace_period: 15s
+    privileged: false
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_DOCKERAPI_PROVIDER: ${AMBER_DOCKERAPI_PROVIDER:-trap}
+      AMBER_DOCKERAPI_LOG_FIFO: /run/amber/log/dockerapi.fifo
+    labels:
+      ambercell.svc: dockerapi
+      ambercell.role: hi
+      ambercell.trap: "true"
+
+  kubelet-collector:
+    profiles: ["wave-d"]
+    build:
+      context: .
+      dockerfile: collectors/kubelet/Dockerfile
+    image: ambercell-kubelet-collector:local
+    container_name: ambercell-kubelet-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_KUBELET_PROVIDER: ${AMBER_KUBELET_PROVIDER:-trap}
+      AMBER_KUBELET_CELL_IP: "172.30.150.10"
+      AMBER_KUBELET_CELL_ID: kubelet-cell-01
+      AMBER_KUBELET_COLLECTOR_ID: kubelet-collector-a
+      AMBER_KUBELET_LOG_FIFO: /run/amber/log/kubelet.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_KUBELET_HI_DIGEST: ${AMBER_KUBELET_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-kubelet-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_KUBELET_RELAX_DST: ${AMBER_KUBELET_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.150.10
+    labels:
+      ambercell.svc: kubelet
+      ambercell.role: collector
+      ambercell.trap: "true"
+
+  kubelet-hi:
+    profiles: ["wave-d"]
+    build:
+      context: services/kubelet/providers/${AMBER_KUBELET_PROVIDER:-trap}
+      dockerfile: Dockerfile
+    image: ambercell-kubelet-hi-${AMBER_KUBELET_PROVIDER:-trap}:local
+    container_name: ambercell-kubelet-hi
+    network_mode: "service:kubelet-collector"
+    depends_on:
+      kubelet-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    stop_grace_period: 15s
+    privileged: false
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_KUBELET_PROVIDER: ${AMBER_KUBELET_PROVIDER:-trap}
+      AMBER_KUBELET_LOG_FIFO: /run/amber/log/kubelet.fifo
+    labels:
+      ambercell.svc: kubelet
+      ambercell.role: hi
+      ambercell.trap: "true"
+
+  ollama-collector:
+    profiles: ["wave-e"]
+    build:
+      context: .
+      dockerfile: collectors/ollama/Dockerfile
+    image: ambercell-ollama-collector:local
+    container_name: ambercell-ollama-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_OLLAMA_PROVIDER: ${AMBER_OLLAMA_PROVIDER:-mock}
+      AMBER_OLLAMA_CELL_IP: "172.30.160.10"
+      AMBER_OLLAMA_CELL_ID: ollama-cell-01
+      AMBER_OLLAMA_COLLECTOR_ID: ollama-collector-a
+      AMBER_OLLAMA_LOG_FIFO: /run/amber/log/ollama.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_OLLAMA_HI_DIGEST: ${AMBER_OLLAMA_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-ollama-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_OLLAMA_RELAX_DST: ${AMBER_OLLAMA_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.160.10
+    labels:
+      ambercell.svc: ollama
+      ambercell.role: collector
+
+  ollama-hi:
+    profiles: ["wave-e"]
+    build:
+      context: services/ollama/providers/${AMBER_OLLAMA_PROVIDER:-mock}
+      dockerfile: Dockerfile
+    image: ambercell-ollama-hi-${AMBER_OLLAMA_PROVIDER:-mock}:local
+    container_name: ambercell-ollama-hi
+    network_mode: "service:ollama-collector"
+    depends_on:
+      ollama-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 2g
+    memswap_limit: 2g
+    pids_limit: 128
+    stop_grace_period: 15s
+    privileged: false
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_OLLAMA_PROVIDER: ${AMBER_OLLAMA_PROVIDER:-mock}
+      AMBER_OLLAMA_LOG_FIFO: /run/amber/log/ollama.fifo
+      AMBER_OLLAMA_STUB_MODEL: ${AMBER_OLLAMA_STUB_MODEL:-tiny-stub:latest}
+    labels:
+      ambercell.svc: ollama
+      ambercell.role: hi
+
+  # Control plane — ambermgmt only (cells have no route here; host DNAT sends udp/53).
+  dns-sinkhole:
+    profiles: ["core"]
+    build:
+      context: ops/dns-sinkhole
+      dockerfile: Dockerfile
+    image: ambercell-dns-sinkhole:local
+    container_name: ambercell-dns-sinkhole
+    init: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      # dnsmasq drops to the dnsmasq user/group at startup
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      ambermgmt:
+        ipv4_address: 172.31.10.53
+    labels:
+      ambercell.svc: dns-sinkhole
+      ambercell.role: control
