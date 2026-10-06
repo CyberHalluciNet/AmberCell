@@ -15,12 +15,20 @@ Notable upstreams commonly referenced by this project (non-exhaustive):
   - Postfix / OpenSMTPD / Exim / Sendmail — respective MTA licenses
   - Dovecot / Cyrus / Courier — respective POP3/IMAP licenses
   - vsftpd / ProFTPD / Pure-FTPd — respective FTP server licenses
-  - OpenSSH / Dropbear — respective SSH server licenses
-  - Nginx / Apache httpd / Caddy / lighttpd — respective HTTP server licenses
-  - BusyBox / inetutils telnetd — respective Telnet daemon licenses
-  - Redis, Mosquitto, MariaDB/MySQL, PostgreSQL, Samba, MongoDB,
-    Elasticsearch, Ollama — respective project licenses
+  - OpenSSH / Dropbear / TinySSH — respective SSH server licenses
+  - Nginx / Apache httpd / Caddy — respective HTTP server licenses
+  - BusyBox / inetutils / netkit telnetd — respective Telnet daemon licenses
+  - Redis / Valkey / KeyDB, Mosquitto / NanoMQ / EMQX (OSS), MariaDB /
+    Percona / MySQL, PostgreSQL / pgvector / TimescaleDB, Samba —
+    respective project licenses
+  - FerretDB, OpenSearch, ZincSearch — respective OSS licenses
+  - MongoDB Community Server — SSPL (operators must accept SSPL terms)
+  - Elasticsearch — Elastic License / SSPL variants (operators must review)
+  - Ollama / LocalAI — respective project licenses
   - Docker / containerd / runc / Compose — respective container runtime licenses
+
+Prefer FerretDB / OpenSearch / ZincSearch when SSPL or Elastic terms are
+undesirable for a deployment.
 
 Image digests and SPDX identifiers for pinned builds will be recorded in
 release SBOMs (CycloneDX or SPDX) when releases are published. This NOTICE is

@@ -1,0 +1,18 @@
+:80 {
+	root * /usr/share/caddy
+	file_server browse
+	log {
+		output stdout
+		format console
+	}
+	handle /wp-login.php {
+		respond "AmberCell lure — not WordPress" 200
+	}
+	handle /phpmyadmin/* {
+		respond "AmberCell lure — not phpMyAdmin" 200
+	}
+	handle_path /uploads/* {
+		root * /var/www/uploads
+		file_server browse
+	}
+}

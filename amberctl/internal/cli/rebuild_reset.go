@@ -15,6 +15,7 @@ import (
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/cosign"
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/dwell"
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/lock"
+	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/paths"
 )
 
 func supportedCell(svc string) bool {
@@ -89,12 +90,12 @@ func rebuildCell(svc string) error {
 	}
 	spec, ok := compose.Cells[svc]
 	if ok {
-		prov := os.Getenv(spec.ProviderEnv)
-		if prov == "" {
-			prov = spec.DefaultProv
+		if root, err := paths.FindComposeRoot(); err == nil {
+			_ = compose.LoadProjectEnv(root)
 		}
-		hiRef := fmt.Sprintf(spec.HiImageFmt, prov)
-		if err := cosign.VerifyDigest(hiRef, os.Getenv(spec.HiDigestEnv)); err != nil {
+		resolved := compose.ResolveHi(spec)
+		compose.ApplyResolvedHi(spec, resolved)
+		if err := cosign.VerifyDigest(resolved.Image, os.Getenv(spec.HiDigestEnv)); err != nil {
 			return fmt.Errorf("rebuild: cosign: %w", err)
 		}
 		if err := cosign.VerifyDigest(spec.CollectorImage, os.Getenv("AMBER_IMAGE_DIGEST")); err != nil {

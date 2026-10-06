@@ -11,10 +11,29 @@ cd amberctl && go build -o amberctl . && cd ..
 export COMPOSE_PROFILES=lab,core
 export AMBER_EVIDENCE_ROOT="${PWD}/.ambercell-lab"
 export AMBER_FTP_PASV_ADDRESS=127.0.0.1
-./amberctl/amberctl init
+./amberctl/amberctl init --yes          # scripts/CI: evidence tree only
+# Humans: ./amberctl/amberctl init      # TTY → provider wizard → .env
+#         ./amberctl/amberctl init --wizard --cells ftp
 ./amberctl/amberctl up ftp && ./amberctl/amberctl drill ftp
 ./amberctl/amberctl status
 ```
+
+### Init wizard (premade vs own Docker)
+
+| Invocation | Behavior |
+| --- | --- |
+| `init --yes` / `AMBER_INIT_NONINTERACTIVE=1` / non-TTY | Evidence dirs only (no prompts) |
+| `init` on a TTY | Evidence dirs, then textual provider wizard |
+| `init --wizard` | Force wizard (needs stdin; works with piped answers) |
+| `init --wizard --cells ftp,smtp` | Limit wizard to named cells |
+
+Wizard writes `AMBER_<SVC>_PROVIDER` and optionally `AMBER_<SVC>_HI_IMAGE` or
+`AMBER_<SVC>_PROVIDER_CONTEXT` into repo-root `.env` (see
+[`docs/providers.md`](docs/providers.md)).
+
+**Own Docker precedence:** `HI_IMAGE` > `PROVIDER_CONTEXT` > builtin
+`services/<svc>/providers/<name>/`. When `HI_IMAGE` is set, `amberctl up`
+skips the hi image build (still builds collector + dns-sinkhole).
 
 Mail cells: `./amberctl/amberctl up smtp && ./amberctl/amberctl drill smtp` (ports `2525` / `1110` on localhost by default).
 
@@ -44,7 +63,9 @@ CI: `./tests/test_stage3_ci.sh` · Stage-4 lab: `./tests/test_stage4_ci.sh` · P
 
 ## amberctl surface (Stage-4)
 
-`init` · `up` · `down` · `status [--drift]` · `logs` · `export` · `publish` · `drill` · `replay [--diff]` · `reset` · `rebuild` · `ai decisions|approve|review` · `critic` · `liveness` · `execute-decision`
+`init [--yes|--wizard] [--cells …]` · `up` · `down` · `status [--drift]` · `logs` · `export` · `publish` · `drill` · `replay [--diff]` · `reset` · `rebuild` · `ai decisions|approve|review` · `critic` · `liveness` · `execute-decision`
+
+Providers: premade `AMBER_<SVC>_PROVIDER` (see [`docs/providers.md`](docs/providers.md)) or own Docker via `AMBER_<SVC>_HI_IMAGE` / `AMBER_<SVC>_PROVIDER_CONTEXT`.
 
 ## Support matrix
 
@@ -59,6 +80,7 @@ Requires Docker 24+ and Compose v2. Production: [`ops/RUNBOOK.md`](ops/RUNBOOK.m
 
 - [`plan.md`](plan.md) — normative stage plan and tracked todos
 - [`docs/DESIGN.md`](docs/DESIGN.md) — architecture (Status: Draft)
+- [`docs/providers.md`](docs/providers.md) — provider_contract.v1 + own Docker
 - [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) — adversary model
 - [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — operator guide
 - [`ops/RUNBOOK.md`](ops/RUNBOOK.md) — production host ops

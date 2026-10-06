@@ -1,10 +1,10 @@
-# FTP provider: vsftpd (default)
+# FTP provider: vsftpd (default / reference)
 
 **Protocol cell:** `ftp`  
 **Provider id:** `vsftpd`  
-**Select:** `AMBER_FTP_PROVIDER=vsftpd`
+**Select:** `AMBER_FTP_PROVIDER=vsftpd` (default)
 
-Real [vsftpd](https://security.appspot.com/vsftpd.html) on Alpine 3.20. Stage-1: anonymous + weak local accounts, seeded tree under `/var/ftp/pub`, writable upload path `/var/ftp/incoming`, `LIST`, PASV/EPSV on `30000–30049`, Active Mode disabled.
+Real [vsftpd](https://security.appspot.com/vsftpd.html) on Alpine 3.20. **Reference implementation** for the FTP premade trio (`vsftpd`, [`proftpd`](../proftpd/), [`pure-ftpd`](../pure-ftpd/)). Stage-1: anonymous + weak local accounts, seeded tree under `/var/ftp/pub`, writable upload path `/var/ftp/incoming`, `LIST`, PASV/EPSV on `30000–30049`, Active Mode disabled.
 
 ## Contract
 
@@ -13,7 +13,7 @@ Real [vsftpd](https://security.appspot.com/vsftpd.html) on Alpine 3.20. Stage-1:
 - **`pasv_address`** rendered at start from **`AMBER_FTP_PASV_ADDRESS`** (public IP or operator override). Without it, the entrypoint falls back to `127.0.0.1` and logs a warning (lab/CI only).
 - **`listen_ipv6=NO`** — IPv4 control listener only.
 - Evidence field names are protocol-stable; set `provider_id=vsftpd` on flows/events.
-- Image digest pinned in compose/lockfile at deploy (Stage-0B compose todo). This Dockerfile pins **`alpine:3.20` by tag** with a TODO to record the base digest in the lock workflow.
+- Base image pinned by digest in this Dockerfile (Alpine 3.20 multi-arch index). Alternates use the same pin.
 
 ## Build
 
@@ -83,3 +83,12 @@ Image content (`/var/ftp/pub`, `/home/ftpuser/ftp`, `/home/upload/ftp`, `/etc/vs
 - Passive range: `30000–30049/tcp` advertised with injected `pasv_address`
 - `PORT` / Active Mode rejected by daemon (`port_enable=NO`)
 - Anonymous `LIST` on `/var/ftp/pub`
+
+## Switch provider
+
+```bash
+export AMBER_FTP_PROVIDER=vsftpd          # or proftpd | pure-ftpd
+export AMBER_FTP_PASV_ADDRESS=127.0.0.1   # lab
+./amberctl/amberctl up ftp
+# or: AMBER_FTP_PROVIDER=vsftpd AMBER_FTP_HOST_PORT=2121 ./tests/test_smoke_ftp.sh
+```

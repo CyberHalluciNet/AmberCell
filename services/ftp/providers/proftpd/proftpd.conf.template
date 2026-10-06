@@ -1,0 +1,77 @@
+# AmberCell FTP provider — proftpd
+# Rendered at container start: @PASV_ADDRESS@ ← AMBER_FTP_PASV_ADDRESS
+
+ServerName			"AmberCell FTP"
+ServerType			standalone
+DefaultServer			on
+Port				21
+UseIPv6				off
+
+# Drop privileges after bind (Alpine package user).
+User				proftpd
+Group				proftpd
+Umask				022
+
+# nologin shells on smoke accounts
+RequireValidShell		off
+
+# Runtime paths on tmpfs (/tmp) — image rootfs is read_only.
+PidFile				/tmp/proftpd/proftpd.pid
+ScoreboardFile			/tmp/proftpd/proftpd.scoreboard
+DelayTable			/tmp/proftpd/proftpd.delay
+DelayEngine			on
+
+# No ctrls socket under read_only root.
+ControlsEngine			off
+
+# Container-friendly logging (stderr / none; no /var/log required)
+SystemLog			none
+ServerLog			none
+TransferLog			none
+WtmpLog				off
+
+# Active Mode off — PASV/EPSV only (plan 1.1)
+<Limit PORT EPRT LPRT>
+  DenyAll
+</Limit>
+
+PassivePorts			30000 30049
+MasqueradeAddress		@PASV_ADDRESS@
+
+# Local smoke accounts: chroot to home (matches vsftpd layout).
+DefaultRoot			~ ftpuser,upload
+AllowOverwrite			on
+
+# Anonymous + weak-account tree (same seed layout as vsftpd)
+<Anonymous /var/ftp>
+  User				ftp
+  Group				ftp
+  UserAlias			anonymous ftp
+  MaxClients			30
+  AnonRequirePassword		off
+  RequireValidShell		off
+
+  <Directory *>
+    <Limit WRITE>
+      DenyAll
+    </Limit>
+  </Directory>
+
+  <Directory pub>
+    <Limit READ DIRS>
+      AllowAll
+    </Limit>
+    <Limit WRITE>
+      DenyAll
+    </Limit>
+  </Directory>
+
+  <Directory incoming>
+    <Limit STOR APPE>
+      AllowAll
+    </Limit>
+    <Limit READ DELE RNFR RNTO RMD MKD CWD XCWD>
+      DenyAll
+    </Limit>
+  </Directory>
+</Anonymous>

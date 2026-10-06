@@ -72,7 +72,7 @@ func printUsage(w *os.File) {
 	fmt.Fprintf(w, `amberctl — AmberCell operator CLI (Stages 1–7)
 
 Usage:
-  amberctl init
+  amberctl init [--yes] [--wizard] [--cells ftp,smtp,…]
   amberctl up `+cells+`
   amberctl down `+cells+`
   amberctl status [--drift]
@@ -95,9 +95,13 @@ Liveness: TCP+banner every 30s; 3 fails → snapshot_then_rebuild (independent o
 Production (COMPOSE_PROFILES includes production): probes cell IPs on ambernet;
 nft apply runs after up (AMBER_SKIP_NFT_APPLY=1 to skip).
 
+Init: TTY runs the provider wizard (premade vs own Docker → .env). --yes or
+AMBER_INIT_NONINTERACTIVE=1 skips prompts. --wizard forces the wizard (needs stdin).
+
 Environment:
   AMBER_EVIDENCE_ROOT     evidence tree (default /var/ambercell; mode 0750 root:amber in prod)
   AMBER_ROOT              repo root with compose.yaml
+  AMBER_INIT_NONINTERACTIVE=1  skip init wizard (same as init --yes)
   COMPOSE_PROFILES        docker compose profiles (default lab,core; production,core for prod)
   AMBER_ENFORCE_CONTAINMENT=1  also load compose.containment.yaml (seccomp/AppArmor)
   AMBER_FTP_PASV_ADDRESS  required public IPv4 in production (not 127.0.0.1)

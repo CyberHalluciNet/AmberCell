@@ -123,9 +123,9 @@ services:
   ftp-hi:
     profiles: ["core"]
     build:
-      context: services/ftp/providers/${AMBER_FTP_PROVIDER:-vsftpd}
+      context: ${AMBER_FTP_PROVIDER_CONTEXT:-services/ftp/providers/vsftpd}
       dockerfile: Dockerfile
-    image: ambercell-ftp-hi-${AMBER_FTP_PROVIDER:-vsftpd}:local
+    image: ${AMBER_FTP_HI_IMAGE:-ambercell-ftp-hi-vsftpd:local}
     container_name: ambercell-ftp-hi
     # Shares collector netns — no separate IP, no host evidence mount, no ports.
     network_mode: "service:ftp-collector"
@@ -268,9 +268,9 @@ services:
   smtp-hi:
     profiles: ["core"]
     build:
-      context: services/smtp/providers/${AMBER_SMTP_PROVIDER:-postfix}
+      context: ${AMBER_SMTP_PROVIDER_CONTEXT:-services/smtp/providers/postfix}
       dockerfile: Dockerfile
-    image: ambercell-smtp-hi-${AMBER_SMTP_PROVIDER:-postfix}:local
+    image: ${AMBER_SMTP_HI_IMAGE:-ambercell-smtp-hi-postfix:local}
     container_name: ambercell-smtp-hi
     network_mode: "service:smtp-collector"
     depends_on:
@@ -360,9 +360,9 @@ services:
   pop3-hi:
     profiles: ["core"]
     build:
-      context: services/pop3/providers/${AMBER_POP3_PROVIDER:-dovecot}
+      context: ${AMBER_POP3_PROVIDER_CONTEXT:-services/pop3/providers/dovecot}
       dockerfile: Dockerfile
-    image: ambercell-pop3-hi-${AMBER_POP3_PROVIDER:-dovecot}:local
+    image: ${AMBER_POP3_HI_IMAGE:-ambercell-pop3-hi-dovecot:local}
     container_name: ambercell-pop3-hi
     network_mode: "service:pop3-collector"
     depends_on:
@@ -403,9 +403,9 @@ services:
   telnet-hi:
     profiles: ["core"]
     build:
-      context: services/telnet/providers/${AMBER_TELNET_PROVIDER:-busybox-telnetd}
+      context: ${AMBER_TELNET_PROVIDER_CONTEXT:-services/telnet/providers/busybox-telnetd}
       dockerfile: Dockerfile
-    image: ambercell-telnet-hi-${AMBER_TELNET_PROVIDER:-busybox-telnetd}:local
+    image: ${AMBER_TELNET_HI_IMAGE:-ambercell-telnet-hi-busybox-telnetd:local}
     container_name: ambercell-telnet-hi
     network_mode: "service:telnet-collector"
     depends_on:
@@ -493,9 +493,9 @@ services:
   ssh-hi:
     profiles: ["wave-a"]
     build:
-      context: services/ssh/providers/${AMBER_SSH_PROVIDER:-openssh}
+      context: ${AMBER_SSH_PROVIDER_CONTEXT:-services/ssh/providers/openssh}
       dockerfile: Dockerfile
-    image: ambercell-ssh-hi-${AMBER_SSH_PROVIDER:-openssh}:local
+    image: ${AMBER_SSH_HI_IMAGE:-ambercell-ssh-hi-openssh:local}
     container_name: ambercell-ssh-hi
     network_mode: "service:ssh-collector"
     depends_on:
@@ -588,9 +588,9 @@ services:
   redis-hi:
     profiles: ["wave-a"]
     build:
-      context: services/redis/providers/${AMBER_REDIS_PROVIDER:-redis-server}
+      context: ${AMBER_REDIS_PROVIDER_CONTEXT:-services/redis/providers/redis-server}
       dockerfile: Dockerfile
-    image: ambercell-redis-hi-${AMBER_REDIS_PROVIDER:-redis-server}:local
+    image: ${AMBER_REDIS_HI_IMAGE:-ambercell-redis-hi-redis-server:local}
     container_name: ambercell-redis-hi
     network_mode: "service:redis-collector"
     depends_on:
@@ -674,9 +674,9 @@ services:
   mqtt-hi:
     profiles: ["wave-a"]
     build:
-      context: services/mqtt/providers/${AMBER_MQTT_PROVIDER:-mosquitto}
+      context: ${AMBER_MQTT_PROVIDER_CONTEXT:-services/mqtt/providers/mosquitto}
       dockerfile: Dockerfile
-    image: ambercell-mqtt-hi-${AMBER_MQTT_PROVIDER:-mosquitto}:local
+    image: ${AMBER_MQTT_HI_IMAGE:-ambercell-mqtt-hi-mosquitto:local}
     container_name: ambercell-mqtt-hi
     network_mode: "service:mqtt-collector"
     depends_on:
@@ -763,9 +763,9 @@ services:
   http-hi:
     profiles: ["wave-b"]
     build:
-      context: services/http/providers/${AMBER_HTTP_PROVIDER:-nginx}
+      context: ${AMBER_HTTP_PROVIDER_CONTEXT:-services/http/providers/nginx}
       dockerfile: Dockerfile
-    image: ambercell-http-hi-${AMBER_HTTP_PROVIDER:-nginx}:local
+    image: ${AMBER_HTTP_HI_IMAGE:-ambercell-http-hi-nginx:local}
     container_name: ambercell-http-hi
     network_mode: "service:http-collector"
     depends_on:
@@ -854,9 +854,9 @@ services:
   mysql-hi:
     profiles: ["wave-b"]
     build:
-      context: services/mysql/providers/${AMBER_MYSQL_PROVIDER:-mariadb}
+      context: ${AMBER_MYSQL_PROVIDER_CONTEXT:-services/mysql/providers/mariadb}
       dockerfile: Dockerfile
-    image: ambercell-mysql-hi-${AMBER_MYSQL_PROVIDER:-mariadb}:local
+    image: ${AMBER_MYSQL_HI_IMAGE:-ambercell-mysql-hi-mariadb:local}
     container_name: ambercell-mysql-hi
     network_mode: "service:mysql-collector"
     depends_on:
@@ -944,9 +944,9 @@ services:
   postgres-hi:
     profiles: ["wave-b"]
     build:
-      context: services/postgres/providers/${AMBER_POSTGRES_PROVIDER:-postgresql}
+      context: ${AMBER_POSTGRES_PROVIDER_CONTEXT:-services/postgres/providers/postgresql}
       dockerfile: Dockerfile
-    image: ambercell-postgres-hi-${AMBER_POSTGRES_PROVIDER:-postgresql}:local
+    image: ${AMBER_POSTGRES_HI_IMAGE:-ambercell-postgres-hi-postgresql:local}
     container_name: ambercell-postgres-hi
     network_mode: "service:postgres-collector"
     depends_on:
@@ -1034,9 +1034,9 @@ services:
   smb-hi:
     profiles: ["wave-c"]
     build:
-      context: services/smb/providers/${AMBER_SMB_PROVIDER:-samba}
+      context: ${AMBER_SMB_PROVIDER_CONTEXT:-services/smb/providers/samba}
       dockerfile: Dockerfile
-    image: ambercell-smb-hi-${AMBER_SMB_PROVIDER:-samba}:local
+    image: ${AMBER_SMB_HI_IMAGE:-ambercell-smb-hi-samba:local}
     container_name: ambercell-smb-hi
     network_mode: "service:smb-collector"
     depends_on:
@@ -1126,9 +1126,9 @@ services:
   mongo-hi:
     profiles: ["wave-c"]
     build:
-      context: services/mongo/providers/${AMBER_MONGO_PROVIDER:-mongodb}
+      context: ${AMBER_MONGO_PROVIDER_CONTEXT:-services/mongo/providers/mongodb}
       dockerfile: Dockerfile
-    image: ambercell-mongo-hi-${AMBER_MONGO_PROVIDER:-mongodb}:local
+    image: ${AMBER_MONGO_HI_IMAGE:-ambercell-mongo-hi-mongodb:local}
     container_name: ambercell-mongo-hi
     network_mode: "service:mongo-collector"
     depends_on:
@@ -1210,9 +1210,9 @@ services:
   elastic-hi:
     profiles: ["wave-c"]
     build:
-      context: services/elastic/providers/${AMBER_ELASTIC_PROVIDER:-elasticsearch}
+      context: ${AMBER_ELASTIC_PROVIDER_CONTEXT:-services/elastic/providers/elasticsearch}
       dockerfile: Dockerfile
-    image: ambercell-elastic-hi-${AMBER_ELASTIC_PROVIDER:-elasticsearch}:local
+    image: ${AMBER_ELASTIC_HI_IMAGE:-ambercell-elastic-hi-elasticsearch:local}
     container_name: ambercell-elastic-hi
     network_mode: "service:elastic-collector"
     depends_on:
@@ -1299,9 +1299,9 @@ services:
   dockerapi-hi:
     profiles: ["wave-d"]
     build:
-      context: services/dockerapi/providers/${AMBER_DOCKERAPI_PROVIDER:-trap}
+      context: ${AMBER_DOCKERAPI_PROVIDER_CONTEXT:-services/dockerapi/providers/trap}
       dockerfile: Dockerfile
-    image: ambercell-dockerapi-hi-${AMBER_DOCKERAPI_PROVIDER:-trap}:local
+    image: ${AMBER_DOCKERAPI_HI_IMAGE:-ambercell-dockerapi-hi-trap:local}
     container_name: ambercell-dockerapi-hi
     network_mode: "service:dockerapi-collector"
     depends_on:
@@ -1385,9 +1385,9 @@ services:
   kubelet-hi:
     profiles: ["wave-d"]
     build:
-      context: services/kubelet/providers/${AMBER_KUBELET_PROVIDER:-trap}
+      context: ${AMBER_KUBELET_PROVIDER_CONTEXT:-services/kubelet/providers/trap}
       dockerfile: Dockerfile
-    image: ambercell-kubelet-hi-${AMBER_KUBELET_PROVIDER:-trap}:local
+    image: ${AMBER_KUBELET_HI_IMAGE:-ambercell-kubelet-hi-trap:local}
     container_name: ambercell-kubelet-hi
     network_mode: "service:kubelet-collector"
     depends_on:
@@ -1470,9 +1470,9 @@ services:
   ollama-hi:
     profiles: ["wave-e"]
     build:
-      context: services/ollama/providers/${AMBER_OLLAMA_PROVIDER:-mock}
+      context: ${AMBER_OLLAMA_PROVIDER_CONTEXT:-services/ollama/providers/mock}
       dockerfile: Dockerfile
-    image: ambercell-ollama-hi-${AMBER_OLLAMA_PROVIDER:-mock}:local
+    image: ${AMBER_OLLAMA_HI_IMAGE:-ambercell-ollama-hi-mock:local}
     container_name: ambercell-ollama-hi
     network_mode: "service:ollama-collector"
     depends_on:

@@ -1,7 +1,13 @@
-# SSH provider stub: dropbear (alternate)
+# SSH provider: dropbear
 
+**Protocol cell:** `ssh`  
 **Provider id:** `dropbear`  
-**Select:** `AMBER_SSH_PROVIDER=dropbear`
+**Select:** `AMBER_SSH_PROVIDER=dropbear` (and matching `AMBER_SSH_PROVIDER_CONTEXT`)
 
-Empty alternate slot under the same SSH evidence/port contract as `openssh`.
-Not implemented in core Submit.
+Lightweight Dropbear sshd under the same lure accounts / FIFO contract as `openssh`.
+
+| User | Password |
+| --- | --- |
+| admin | admin123 |
+| support | support |
+| lure | lure |

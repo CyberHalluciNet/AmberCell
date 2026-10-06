@@ -9,13 +9,21 @@ cd "$ROOT"
 EVID="${AMBER_EVIDENCE_ROOT:-$ROOT/.ambercell-smoke}"
 HOST_PORT="${AMBER_FTP_HOST_PORT:-2121}"
 PASV_ADDR="${AMBER_FTP_PASV_ADDRESS:-127.0.0.1}"
+FTP_PROVIDER="${AMBER_FTP_PROVIDER:-vsftpd}"
 export AMBER_EVIDENCE_ROOT="$EVID"
 export AMBER_FTP_HOST_PORT="$HOST_PORT"
 export AMBER_FTP_PASV_ADDRESS="$PASV_ADDR"
-export AMBER_FTP_PROVIDER="${AMBER_FTP_PROVIDER:-vsftpd}"
+export AMBER_FTP_PROVIDER="$FTP_PROVIDER"
 export COMPOSE_PROFILES="${COMPOSE_PROFILES:-lab,core}"
 export AMBER_ROOT="$ROOT"
 COMPOSE_FILES=(-f "$ROOT/compose.yaml" -f "$ROOT/compose.lab.yaml")
+
+PROVIDER_DIR="$ROOT/services/ftp/providers/${FTP_PROVIDER}"
+if [[ ! -f "$PROVIDER_DIR/Dockerfile" ]]; then
+  echo "FAIL: unknown AMBER_FTP_PROVIDER=${FTP_PROVIDER} (no Dockerfile at ${PROVIDER_DIR})" >&2
+  exit 1
+fi
+echo "==> FTP provider: ${FTP_PROVIDER}"
 
 AMBERCTL_BIN="${AMBERCTL_BIN:-}"
 if [[ -z "$AMBERCTL_BIN" ]]; then
@@ -185,13 +193,18 @@ if [[ ! -f "$EVID/state/ftp.json" ]]; then
   exit 1
 fi
 grep -q '"provider_id"' "$EVID/state/ftp.json"
+if ! grep -q "\"provider_id\": \"${FTP_PROVIDER}\"" "$EVID/state/ftp.json"; then
+  echo "FAIL: state/ftp.json provider_id != ${FTP_PROVIDER}" >&2
+  cat "$EVID/state/ftp.json" >&2
+  exit 1
+fi
 # Digests must be real image ids, not the placeholder "local".
 if grep -q '"image_digest": "local"' "$EVID/state/ftp.json" || grep -q '"image_digest": ""' "$EVID/state/ftp.json"; then
   echo "FAIL: state/ftp.json missing real image_digest" >&2
   cat "$EVID/state/ftp.json" >&2
   exit 1
 fi
-echo "OK: state/ftp.json"
+echo "OK: state/ftp.json (provider_id=${FTP_PROVIDER})"
 
 if [[ "$found_events" != "1" ]]; then
   echo "FAIL: no event.v1 JSONL under $EVID/jsonl/ftp/" >&2

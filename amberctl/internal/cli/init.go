@@ -6,15 +6,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/canary"
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/compose"
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/paths"
+	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/wizard"
 )
 
 func runInit(args []string) error {
-	if len(args) > 0 {
-		return fmt.Errorf("init: unexpected arguments %v", args)
+	yes, forceWizard, cells, err := parseInitArgs(args)
+	if err != nil {
+		return err
+	}
+	if forceWizard && wizard.NonInteractive(yes) {
+		return fmt.Errorf("init: --wizard conflicts with --yes / AMBER_INIT_NONINTERACTIVE")
 	}
 	compose.LogInvokerUID("init")
 
@@ -52,5 +58,91 @@ func runInit(args []string) error {
 	}
 
 	fmt.Printf("initialized evidence tree under %s (mode 0750; prod owner root:amber)\n", root)
-	return nil
+
+	runWizard := false
+	switch {
+	case wizard.NonInteractive(yes):
+		runWizard = false
+	case forceWizard:
+		runWizard = true
+	case wizard.IsTTY():
+		runWizard = true
+	default:
+		runWizard = false
+	}
+
+	if !runWizard {
+		return nil
+	}
+
+	composeRoot, err := paths.FindComposeRoot()
+	if err != nil {
+		return fmt.Errorf("init wizard: %w", err)
+	}
+	if forceWizard && os.Stdin == nil {
+		return fmt.Errorf("init: --wizard requires stdin")
+	}
+
+	return wizard.Run(wizard.Options{
+		Root:       composeRoot,
+		Cells:      cells,
+		ForceStdin: forceWizard,
+	})
+}
+
+func parseInitArgs(args []string) (yes, forceWizard bool, cells []string, err error) {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--yes" || a == "-y":
+			yes = true
+		case a == "--wizard":
+			forceWizard = true
+		case a == "--cells":
+			if i+1 >= len(args) {
+				return false, false, nil, fmt.Errorf("init: --cells requires a value (e.g. ftp,smtp)")
+			}
+			i++
+			cells, err = splitCells(args[i])
+			if err != nil {
+				return false, false, nil, err
+			}
+		case strings.HasPrefix(a, "--cells="):
+			cells, err = splitCells(strings.TrimPrefix(a, "--cells="))
+			if err != nil {
+				return false, false, nil, err
+			}
+		case a == "-h" || a == "--help":
+			return false, false, nil, fmt.Errorf("usage: amberctl init [--yes] [--wizard] [--cells ftp,smtp,…]")
+		default:
+			return false, false, nil, fmt.Errorf("init: unexpected argument %q (try --yes, --wizard, --cells)", a)
+		}
+	}
+	if len(cells) > 0 {
+		// --cells always implies wizard intent (caller rejects --yes/--wizard conflict).
+		forceWizard = true
+	}
+	return yes, forceWizard, cells, nil
+}
+
+func splitCells(s string) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	for _, p := range strings.Split(s, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if _, ok := compose.Cells[p]; !ok {
+			return nil, fmt.Errorf("init: unknown cell %q", p)
+		}
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("init: --cells requires at least one service")
+	}
+	return out, nil
 }

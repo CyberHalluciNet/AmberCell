@@ -8,7 +8,6 @@
 
 - Real OpenSSH `sshd`; PTY via `amber-shell.sh` + collector FIFO; SFTP/scp uploads on shared `/mnt/uploads`.
 - Honeypot owns public `tcp/22` via nft DNAT — **G9:** admin SSH must use another port/path.
-- Alternate: [`../dropbear/`](../dropbear/) (stub slot).
 
 ## Lure accounts (lab)
 
@@ -18,6 +17,11 @@
 | support | support |
 | lure | lure |
 
-## Implementation
+## Alternates
+
+| Provider | Notes |
+| --- | --- |
+| `dropbear` | Lightweight Dropbear sshd |
+| `tinyssh` | Pubkey-only TinySSH |
 
 Stage-5 Wave A — see `compose.yaml` profile `wave-a`, collector `collectors/ssh/`.

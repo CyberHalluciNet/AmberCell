@@ -9,4 +9,5 @@ if [ ! -p "$LOG_FIFO" ]; then
   chmod 666 "$LOG_FIFO" 2>/dev/null || true
 fi
 
+export AMBER_DOCKERAPI_TRAP_PROFILE="${AMBER_DOCKERAPI_TRAP_PROFILE:-default}"
 exec python3 /opt/trap/trap_server.py

@@ -1,3 +1,6 @@
-# HTTP provider slot: caddy (alternate)
+# HTTP provider: caddy
 
-Swappable per `AMBER_HTTP_PROVIDER=caddy`. Not implemented in v1; nginx is the default.
+**Provider id:** `caddy`  
+**Select:** `AMBER_HTTP_PROVIDER=caddy`
+
+Caddy with seeded portal HTML and lure paths (`/wp-login.php`, `/phpmyadmin/`).

@@ -23,13 +23,28 @@ Requires Go 1.22+ and `docker` / `docker compose` on `PATH` for lifecycle comman
 | `AMBER_FTP_HOST_PORT` | `21` | Lab FTP port for drill/liveness |
 | `AMBER_TELNET_HOST_PORT` | `2323` | Lab Telnet port for drill/liveness |
 | `AMBER_FTP_CELL_IP` / `AMBER_TELNET_CELL_IP` | catalog IPs | Conntrack flush targets |
+| `AMBER_INIT_NONINTERACTIVE` | unset | `1` skips init provider wizard |
+| `AMBER_<SVC>_PROVIDER` | catalog default | Premade provider under `services/<svc>/providers/` |
+| `AMBER_<SVC>_HI_IMAGE` | unset | Prebuilt hi image (skips hi build) |
+| `AMBER_<SVC>_PROVIDER_CONTEXT` | builtin path | Own Dockerfile context |
+
+### Init wizard
+
+```bash
+./amberctl init --yes                 # evidence only (CI/scripts)
+./amberctl init                       # TTY → wizard
+./amberctl init --wizard --cells ftp  # force wizard for one cell
+```
+
+See [`../docs/providers.md`](../docs/providers.md) for `provider_contract.v1` and
+own-Docker precedence (`HI_IMAGE` > `PROVIDER_CONTEXT` > premade).
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `init` | Evidence dirs mode `0750`; canaries + `seed_manifest.json`; permissions notes |
-| `up ftp\|telnet` | Build/up collector+hi (+ dns-sinkhole); regenerate canaries |
+| `init` | Evidence dirs mode `0750`; canaries; optional provider wizard → `.env` |
+| `up ftp\|telnet` | Resolve HI_IMAGE/CONTEXT; build/up collector+hi (+ dns-sinkhole); regenerate canaries |
 | `down ftp\|telnet` | Stop **hi** first, wait, then **collector** |
 | `status [--drift]` | Compose ps + state; drift checks provider/seed/nft hashes |
 | `export [-out DIR]` | Closed JSONL segments only |

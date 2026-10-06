@@ -1,0 +1,27 @@
+# AmberCell FTP provider — pure-ftpd CLI flags
+# Rendered at container start: @PASV_ADDRESS@ ← AMBER_FTP_PASV_ADDRESS
+#
+# Alpine's packaged pure-ftpd is not used for the daemon binary; we ship a
+# 1.0.51 build with Active Mode patched off (see disable-active-mode.patch).
+# Flags keep PASV 30000-30049, ForcePassiveIP, anonymous + unix auth, chroot.
+#
+# One flag/argument per line. Blank lines and # comments are ignored.
+
+-4
+-A
+-H
+-Z
+-f
+none
+-l
+unix
+-u
+100
+-U
+022:022
+-g
+/tmp/pure-ftpd.pid
+-p
+30000:30049
+-P
+@PASV_ADDRESS@

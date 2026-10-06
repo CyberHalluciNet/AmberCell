@@ -1,0 +1,26 @@
+--- a/src/ftpd.c
++++ b/src/ftpd.c
+@@ -940,6 +940,11 @@
+     char delim;
+     int family;
+ 
++    /* AmberCell: Active Mode off (plan 1.1) — PASV/EPSV only */
++    (void)delim; (void)family; (void)p;
++    addreply_noformat(502, "Active mode is disabled");
++    return;
++
+     delim = *p++;
+     family = atoi(p);
+     while (isdigit((unsigned char) *p)) {
+@@ -2191,6 +2196,11 @@
+ {
+     unsigned int a1, a2, a3, a4, p1, p2;
+     struct sockaddr_storage a;
++
++    /* AmberCell: Active Mode off (plan 1.1) — PASV/EPSV only */
++    (void)a1; (void)a2; (void)a3; (void)a4; (void)p1; (void)p2; (void)a; (void)arg;
++    addreply_noformat(502, "Active mode is disabled");
++    return;
+ 
+     if (sscanf(arg, "%u,%u,%u,%u,%u,%u",
+                &a1, &a2, &a3, &a4, &p1, &p2) != 6 ||

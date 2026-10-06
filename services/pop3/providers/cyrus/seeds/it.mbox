@@ -1,0 +1,11 @@
+From admin@corp.example.net Mon Oct  6 10:00:00 2026
+Subject: Firewall change window
+To: it@corp.example.net
+
+Maintenance window tonight 02:00 UTC.
+
+From support@corp.example.net Mon Oct  6 09:30:00 2026
+Subject: Ticket backlog
+To: it@corp.example.net
+
+Critical queue has 12 items — please triage.

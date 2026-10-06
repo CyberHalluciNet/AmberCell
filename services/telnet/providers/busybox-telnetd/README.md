@@ -63,7 +63,8 @@ Image content (`/jail` skeleton except session tmp) stays on the read-only layer
 
 | Provider | Status |
 | --- | --- |
-| `inetutils-telnetd` | Documented slot (not implemented) |
+| `inetutils-telnetd` | Premade — `services/telnet/providers/inetutils-telnetd/` |
+| `netkit-telnetd` | Premade — `services/telnet/providers/netkit-telnetd/` |
 
 ## Stage-1 smoke checklist
 

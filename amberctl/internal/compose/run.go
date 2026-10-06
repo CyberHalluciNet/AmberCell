@@ -3,10 +3,12 @@
 package compose
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -384,6 +386,154 @@ func providerFor(spec CellSpec) string {
 	return spec.DefaultProv
 }
 
+// HiImageEnv returns AMBER_<SVC>_HI_IMAGE for the cell.
+func (s CellSpec) HiImageEnv() string {
+	return strings.Replace(s.ProviderEnv, "_PROVIDER", "_HI_IMAGE", 1)
+}
+
+// ProviderContextEnv returns AMBER_<SVC>_PROVIDER_CONTEXT for the cell.
+func (s CellSpec) ProviderContextEnv() string {
+	return strings.Replace(s.ProviderEnv, "_PROVIDER", "_PROVIDER_CONTEXT", 1)
+}
+
+func builtinProviderContext(spec CellSpec, provider string) string {
+	return filepath.ToSlash(filepath.Join("services", spec.Svc, "providers", provider))
+}
+
+// ResolvedHi is the fully resolved hi image + build context for Compose.
+type ResolvedHi struct {
+	Provider    string
+	Image       string
+	Context     string
+	SkipHiBuild bool // true when HI_IMAGE is set (prebuilt / own image)
+}
+
+// ResolveHi applies precedence: HI_IMAGE > PROVIDER_CONTEXT > builtin path.
+func ResolveHi(spec CellSpec) ResolvedHi {
+	prov := providerFor(spec)
+	if img := strings.TrimSpace(os.Getenv(spec.HiImageEnv())); img != "" {
+		ctx := strings.TrimSpace(os.Getenv(spec.ProviderContextEnv()))
+		if ctx == "" {
+			// Prefer an existing premade path so Compose still has a valid build
+			// context even when hi build is skipped (provider_id may be "custom").
+			ctx = builtinProviderContext(spec, spec.DefaultProv)
+		}
+		return ResolvedHi{Provider: prov, Image: img, Context: ctx, SkipHiBuild: true}
+	}
+	if ctx := strings.TrimSpace(os.Getenv(spec.ProviderContextEnv())); ctx != "" {
+		return ResolvedHi{
+			Provider:    prov,
+			Image:       fmt.Sprintf(spec.HiImageFmt, prov),
+			Context:     ctx,
+			SkipHiBuild: false,
+		}
+	}
+	return ResolvedHi{
+		Provider:    prov,
+		Image:       fmt.Sprintf(spec.HiImageFmt, prov),
+		Context:     builtinProviderContext(spec, prov),
+		SkipHiBuild: false,
+	}
+}
+
+// resolveContextPath returns an absolute path for a provider build context.
+func resolveContextPath(root, ctx string) string {
+	ctx = filepath.Clean(strings.TrimSpace(ctx))
+	if ctx == "" || ctx == "." {
+		return root
+	}
+	if filepath.IsAbs(ctx) {
+		return ctx
+	}
+	return filepath.Join(root, ctx)
+}
+
+// ensureHiImagePresent inspects a local image, pulling when missing (registry refs).
+func ensureHiImagePresent(ref string) error {
+	if _, err := imageIDOrDigest(ref); err == nil {
+		return nil
+	}
+	fmt.Fprintf(os.Stderr, "amberctl: pulling hi image %s\n", ref)
+	cmd := exec.Command("docker", "pull", ref)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("pull hi image %s: %w", ref, err)
+	}
+	if _, err := imageIDOrDigest(ref); err != nil {
+		return fmt.Errorf("inspect hi image after pull %s: %w", ref, err)
+	}
+	return nil
+}
+
+// validateProviderContext ensures the build context directory contains a Dockerfile.
+func validateProviderContext(root, ctx string) error {
+	abs := resolveContextPath(root, ctx)
+	st, err := os.Stat(abs)
+	if err != nil {
+		return fmt.Errorf("provider context %q: %w", ctx, err)
+	}
+	if !st.IsDir() {
+		return fmt.Errorf("provider context %q is not a directory", ctx)
+	}
+	df := filepath.Join(abs, "Dockerfile")
+	if st, err := os.Stat(df); err != nil || st.IsDir() {
+		return fmt.Errorf("provider context %q: Dockerfile not found", ctx)
+	}
+	return nil
+}
+
+// ApplyResolvedHi exports fully resolved provider/image/context into the process env
+// so Compose interpolation needs no nested defaults.
+func ApplyResolvedHi(spec CellSpec, r ResolvedHi) {
+	_ = os.Setenv(spec.ProviderEnv, r.Provider)
+	_ = os.Setenv(spec.HiImageEnv(), r.Image)
+	_ = os.Setenv(spec.ProviderContextEnv(), r.Context)
+}
+
+// LoadProjectEnv loads repo-root .env into the process for keys not already set
+// (shell environment wins). Compose also reads .env; amberctl needs the same
+// values for HI_IMAGE skip-build and digest resolution.
+func LoadProjectEnv(root string) error {
+	path := filepath.Join(root, ".env")
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "export ") {
+			line = strings.TrimSpace(strings.TrimPrefix(line, "export "))
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		k = strings.TrimSpace(k)
+		if k == "" {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		if len(v) >= 2 {
+			if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {
+				v = v[1 : len(v)-1]
+			}
+		}
+		if _, exists := os.LookupEnv(k); !exists {
+			_ = os.Setenv(k, v)
+		}
+	}
+	return sc.Err()
+}
+
 func CellIP(svc string) string {
 	spec, ok := Cells[svc]
 	if !ok {
@@ -405,25 +555,46 @@ func UpCell(svc string) error {
 	if err != nil {
 		return err
 	}
+	if err := LoadProjectEnv(root); err != nil {
+		return fmt.Errorf("load .env: %w", err)
+	}
+	resolved := ResolveHi(spec)
+	ApplyResolvedHi(spec, resolved)
+	if resolved.SkipHiBuild {
+		fmt.Fprintf(os.Stderr, "amberctl: %s HI_IMAGE set — skipping hi build (%s)\n", svc, resolved.Image)
+		if err := ensureHiImagePresent(resolved.Image); err != nil {
+			return err
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "amberctl: %s provider=%s context=%s image=%s\n",
+			svc, resolved.Provider, resolved.Context, resolved.Image)
+		if err := validateProviderContext(root, resolved.Context); err != nil {
+			return err
+		}
+	}
+
 	LogInvokerUID("up " + svc)
 	if err := BuildCollectorBase(root); err != nil {
 		return fmt.Errorf("build collector base: %w", err)
 	}
-	// Build cell + DNS sinkhole with the cell's wave profiles merged in.
-	build := composeCmd(root, "build", spec.Collector, spec.Hi, "dns-sinkhole")
+	// Build collector + DNS sinkhole; build hi unless a prebuilt HI_IMAGE is set.
+	buildServices := []string{spec.Collector, "dns-sinkhole"}
+	if !resolved.SkipHiBuild {
+		buildServices = []string{spec.Collector, spec.Hi, "dns-sinkhole"}
+	}
+	build := composeCmd(root, append([]string{"build"}, buildServices...)...)
 	build.Env = composeEnvForCell(spec)
 	if err := build.Run(); err != nil {
 		return err
 	}
 
-	prov := providerFor(spec)
 	collDigest, err := imageIDOrDigest(spec.CollectorImage)
 	if err != nil {
 		return fmt.Errorf("inspect collector image: %w", err)
 	}
-	hiDigest, err := imageIDOrDigest(fmt.Sprintf(spec.HiImageFmt, prov))
+	hiDigest, err := imageIDOrDigest(resolved.Image)
 	if err != nil {
-		return fmt.Errorf("inspect hi image: %w", err)
+		return fmt.Errorf("inspect hi image %s: %w", resolved.Image, err)
 	}
 	fmt.Fprintf(os.Stderr, "amberctl: collector digest %s\n", collDigest)
 	fmt.Fprintf(os.Stderr, "amberctl: hi digest %s\n", hiDigest)

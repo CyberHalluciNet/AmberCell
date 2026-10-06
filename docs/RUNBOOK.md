@@ -80,6 +80,13 @@ Darwin lab **does not** satisfy G1–G11 (`tests/test_stage4_verify.sh` reports 
 - `amberctl down ftp|telnet|smtp|pop3` stops hi before collector.
 - Preserve `/var/ambercell` unless operator explicitly wipes.
 
+## Providers
+
+- Contract + catalog: [`providers.md`](providers.md)
+- Wizard: `amberctl init` (TTY) or `init --wizard`; scripts use `init --yes`
+- Switch premade: `AMBER_<SVC>_PROVIDER=<name>` then `amberctl up <svc>`
+- Own Docker: `AMBER_<SVC>_HI_IMAGE` or `AMBER_<SVC>_PROVIDER_CONTEXT` (see providers.md)
+
 ## Related
 
 - Architecture: [`DESIGN.md`](DESIGN.md)
