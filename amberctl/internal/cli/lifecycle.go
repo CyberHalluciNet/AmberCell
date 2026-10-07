@@ -10,7 +10,7 @@ import (
 	"github.com/CyberHalluciNet/AmberCell/amberctl/internal/compose"
 )
 
-const cellUsage = "ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama"
+const cellUsage = "ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns"
 
 func runUp(args []string) error {
 	if len(args) != 1 || !supportedCell(args[0]) {

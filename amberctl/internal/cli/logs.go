@@ -11,7 +11,7 @@ import (
 
 func runLogs(args []string) error {
 	if len(args) > 1 {
-		return fmt.Errorf("usage: amberctl logs [ftp|telnet|smtp|pop3]")
+		return fmt.Errorf("usage: amberctl logs [svc]")
 	}
 	svc := ""
 	if len(args) == 1 {

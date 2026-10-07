@@ -18,8 +18,9 @@ gaps.
 
 `amberctl up` fully resolves and exports `AMBER_<SVC>_PROVIDER`,
 `AMBER_<SVC>_HI_IMAGE`, and `AMBER_<SVC>_PROVIDER_CONTEXT` before Compose
-(no nested Compose defaults required). Interactive setup:
-`amberctl init` (TTY) or `amberctl init --wizard` — see README.
+(no nested Compose defaults required). Setting `AMBER_<SVC>_HI_IMAGE` skips the
+local hi-image build, while the collector and dns-sinkhole images still build.
+Interactive setup: `amberctl init` (TTY) or `amberctl init --wizard` — see README.
 
 ## Checklist (supported own images)
 
@@ -89,9 +90,19 @@ services/<svc>/providers/<name>/
 | dockerapi | `trap` | `trap`, `trap-v1.41`, `trap-swarm` |
 | kubelet | `trap` | `trap`, `trap-unauth`, `trap-exec` |
 | ollama | `mock` | `mock`, `ollama`, `localai` |
+| dns | `coredns` | `coredns`, `bind9`, `unbound` |
 
 Architecture notes and ports: [`DESIGN.md`](DESIGN.md) §5–6 (local draft; may be gitignored).
 Wizard menus list only providers that currently ship a `Dockerfile`.
+
+### Protocol-specific (DNS)
+
+- [ ] **Authoritative-only** — no recursion, no forwarders, no open-resolver mode; every non-lure query is REFUSED (kill bar **G13**).
+- [ ] Lure zones consistent with the persona (default: `ambercell.lab`, `corp.example.net`); zone data hashes go into the seed manifest.
+- [ ] Stable CHAOS `version.bind`/identity string per provider, recorded in evidence (`server_product`).
+- [ ] Listens on `udp/53` **and** `tcp/53` (AXFR/IXFR probes arrive over TCP; they must be denied and captured).
+- [ ] The daemon's working/scratch directory must be a **tmpfs** (e.g. `/tmp`) — the compose baseline mounts the rootfs `read_only`, and BIND 9.18 drops privileges *before* parsing config, so a root-owned image path as `directory` is a fatal `permission denied`. Reference zone files by absolute read-only path.
+- [ ] Hold one persistent writer on the log FIFO (see [`../collectors/README.md`](../collectors/README.md) § hi→collector log FIFO) — per-line open/close can SIGPIPE the entrypoint under high-volume startup logging.
 
 ### Switch example
 

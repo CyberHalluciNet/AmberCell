@@ -1,0 +1,31 @@
+# AmberCell DNS honeypot — CoreDNS (default provider)
+#
+# Authoritative-only: no forward/recursion plugin anywhere, so the cell can
+# never become an open resolver or amplification vector (kill bar G13). Queries
+# outside the lure zones are REFUSED; unknown names inside them get NXDOMAIN.
+# Stable persona banner (anti-drift): the chaos string is pinned per provider
+# and recorded in evidence as the server_product attribute.
+
+ambercell.lab:53 {
+	errors
+	log
+	file /etc/coredns/zones/db.ambercell.lab
+	chaos ambercell-dns-1.0
+}
+
+corp.example.net:53 {
+	errors
+	log
+	file /etc/coredns/zones/db.corp.example.net
+	chaos ambercell-dns-1.0
+}
+
+# Everything else (recursion probes, scanner lookups) → REFUSED, logged.
+.:53 {
+	errors
+	log
+	chaos ambercell-dns-1.0
+	template IN ANY . {
+		rcode REFUSED
+	}
+}

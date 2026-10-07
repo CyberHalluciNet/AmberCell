@@ -68,7 +68,7 @@ func Run(args []string) error {
 }
 
 func printUsage(w *os.File) {
-	const cells = "ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama"
+	const cells = "ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns"
 	fmt.Fprintf(w, `amberctl — AmberCell operator CLI (Stages 1–7)
 
 Usage:
@@ -114,7 +114,7 @@ Environment:
   AMBER_SSH_HOST_PORT     lab honeypot SSH (default 2222; not admin SSH — G9)
   AMBER_REDIS_HOST_PORT   lab Redis (default 6379)
   AMBER_MQTT_HOST_PORT    lab MQTT (default 1883)
+  AMBER_DNS_HOST_PORT     lab DNS (default 1053; udp+tcp)
 
 `)
 }
-

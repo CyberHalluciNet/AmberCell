@@ -8,6 +8,9 @@ Protocol collectors capture traffic in the **cell network namespace** without op
 |------|---------|
 | `collectors/base/` | Shared Python library + base image (`ambercell-collector-base`) |
 | `collectors/ftp/` | FTP collector entrypoint (control + PASV data) |
+| `collectors/dns/` | DNS collector entrypoint (udp/tcp 53; parses tcpdump's native DNS decode — no payload dump) |
+
+Per-service collectors live under `collectors/<svc>/<svc>_collector/` and share the base library (emitters, pcap ring, flow tracking, FIFO log reader).
 
 ### Evidence directories (per service `<svc>`)
 
@@ -81,6 +84,15 @@ Required JSON fields match `docs/schemas/rawflow.v1.schema.json` and `docs/schem
 ### PASV correlation
 
 When the control channel sends `227 Entering Passive Mode (...)` (or EPSV `229`), the advertised port is mapped to the parent control `session_id`. Subsequent inbound TCP to `172.30.30.10` on that port in `30000-30049` is stamped with the same `session_id` in raw-flow records.
+
+## hi→collector log FIFO (provider entrypoint contract)
+
+The `*-hi` container tees daemon stdout into `$AMBER_<SVC>_LOG_FIFO` for tertiary evidence. **Keep one writer attached to the FIFO for the process lifetime** (e.g. `{ tail -f /dev/null >"$FIFO" & }` before starting the daemon, and `|| true` on per-line appends):
+
+- Each `printf >> "$FIFO"` opens/closes the FIFO, so the collector's reader hits EOF between lines, closes, and reconnects every ~0.5 s.
+- If the reader closes mid-append, the writer gets SIGPIPE — fatal under `set -e`, and near-certain for daemons with high-volume startup logging (BIND 9.18 died this way; fixed in the DNS providers, still latent in the older mqtt/ollama provider entrypoints).
+
+The FIFO is tertiary: raw pcap and normalized JSONL from the collector are the primary evidence and never depend on it.
 
 ## Environment
 

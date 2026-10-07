@@ -119,6 +119,7 @@ services:
     labels:
       ambercell.svc: ftp
       ambercell.role: collector
+      ambercell.rev: "ff4f50"
 
   ftp-hi:
     profiles: ["core"]
@@ -216,6 +217,7 @@ services:
     labels:
       ambercell.svc: telnet
       ambercell.role: collector
+      ambercell.rev: "ff4f50"
 
   smtp-collector:
     profiles: ["core"]
@@ -264,6 +266,7 @@ services:
     labels:
       ambercell.svc: smtp
       ambercell.role: collector
+      ambercell.rev: "ff4f50"
 
   smtp-hi:
     profiles: ["core"]
@@ -356,6 +359,7 @@ services:
     labels:
       ambercell.svc: pop3
       ambercell.role: collector
+      ambercell.rev: "ff4f50"
 
   pop3-hi:
     profiles: ["core"]
@@ -1502,6 +1506,97 @@ services:
       AMBER_OLLAMA_STUB_MODEL: ${AMBER_OLLAMA_STUB_MODEL:-tiny-stub:latest}
     labels:
       ambercell.svc: ollama
+      ambercell.role: hi
+
+  # Wave F — DNS (udp + tcp 53). Authoritative-only honeypot: hi ships
+  # premade coredns (default) / bind9 / unbound or an own image; all lure
+  # zones, no recursion — cell DNS egress still goes through the host DNAT
+  # to the ambermgmt sinkhole (G13).
+  dns-collector:
+    profiles: ["wave-f"]
+    build:
+      context: .
+      dockerfile: collectors/dns/Dockerfile
+    image: ambercell-dns-collector:local
+    container_name: ambercell-dns-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_DNS_PROVIDER: ${AMBER_DNS_PROVIDER:-coredns}
+      AMBER_DNS_CELL_IP: "172.30.170.10"
+      AMBER_DNS_CELL_ID: dns-cell-01
+      AMBER_DNS_COLLECTOR_ID: dns-collector-a
+      AMBER_DNS_LOG_FIFO: /run/amber/log/dns.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_DNS_HI_DIGEST: ${AMBER_DNS_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-dns-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_DNS_RELAX_DST: ${AMBER_DNS_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.170.10
+    labels:
+      ambercell.svc: dns
+      ambercell.role: collector
+
+  dns-hi:
+    profiles: ["wave-f"]
+    build:
+      context: ${AMBER_DNS_PROVIDER_CONTEXT:-services/dns/providers/coredns}
+      dockerfile: Dockerfile
+    image: ${AMBER_DNS_HI_IMAGE:-ambercell-dns-hi-coredns:local}
+    container_name: ambercell-dns-hi
+    network_mode: "service:dns-collector"
+    depends_on:
+      dns-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_DNS_PROVIDER: ${AMBER_DNS_PROVIDER:-coredns}
+      AMBER_DNS_LOG_FIFO: /run/amber/log/dns.fifo
+    labels:
+      ambercell.svc: dns
       ambercell.role: hi
 
   # Control plane — ambermgmt only (cells have no route here; host DNAT sends udp/53).

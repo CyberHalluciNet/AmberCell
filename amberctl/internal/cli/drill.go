@@ -14,7 +14,7 @@ import (
 
 func runDrill(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: amberctl drill ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama")
+		return fmt.Errorf("usage: amberctl drill ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns")
 	}
 	switch args[0] {
 	case "ftp":
@@ -49,6 +49,8 @@ func runDrill(args []string) error {
 		return drillKubelet()
 	case "ollama":
 		return drillOllama()
+	case "dns":
+		return drillDNS()
 	default:
 		return fmt.Errorf("drill: unsupported service %q", args[0])
 	}
@@ -315,6 +317,77 @@ func drillMQTT() error {
 	}
 	defer conn.Close()
 	fmt.Fprintf(os.Stderr, "amberctl: drill mqtt OK (%s) TCP connect\n", addr)
+	return nil
+}
+
+// dnsUDPProbe sends a minimal A query for the ambercell.lab lure zone and
+// validates a DNS response (matching qid, QR bit, NOERROR). Shared by
+// `amberctl drill dns` and the dns liveness probe.
+func dnsUDPProbe(host string, port int) (string, error) {
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	const probeName = "ambercell.lab"
+	qid := uint16(0x4143)
+	query := buildDNSQuery(qid, probeName)
+	conn, err := net.DialTimeout("udp", addr, 5*time.Second)
+	if err != nil {
+		return "", fmt.Errorf("UDP connect to %s failed: %w", addr, err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+	if _, err := conn.Write(query); err != nil {
+		return "", fmt.Errorf("send DNS query to %s failed: %w", addr, err)
+	}
+	buf := make([]byte, 512)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return "", fmt.Errorf("read DNS response from %s failed: %w", addr, err)
+	}
+	if n < 12 {
+		return "", fmt.Errorf("short DNS response from %s (%d bytes)", addr, n)
+	}
+	respQid := uint16(buf[0])<<8 | uint16(buf[1])
+	if respQid != qid {
+		return "", fmt.Errorf("DNS response qid mismatch from %s", addr)
+	}
+	if buf[2]&0x80 == 0 {
+		return "", fmt.Errorf("QR bit not set in response from %s", addr)
+	}
+	if rcode := buf[3] & 0x0F; rcode != 0 {
+		return "", fmt.Errorf("DNS rcode %d from %s for %s", rcode, addr, probeName)
+	}
+	return fmt.Sprintf("A %s NOERROR %d bytes", probeName, n), nil
+}
+
+func buildDNSQuery(qid uint16, name string) []byte {
+	b := make([]byte, 0, 12+2*len(name)+5)
+	b = append(b, byte(qid>>8), byte(qid))
+	b = append(b, 0x01, 0x00) // flags: RD=1
+	b = append(b, 0x00, 0x01) // QDCOUNT=1
+	b = append(b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+	for _, label := range strings.Split(name, ".") {
+		if label == "" {
+			continue
+		}
+		b = append(b, byte(len(label)))
+		b = append(b, label...)
+	}
+	b = append(b, 0x00)
+	b = append(b, 0x00, 0x01) // QTYPE=A
+	b = append(b, 0x00, 0x01) // QCLASS=IN
+	return b
+}
+
+func drillDNS() error {
+	host, port, err := resolveProbeAddr("dns")
+	if err != nil {
+		return err
+	}
+	detail, err := dnsUDPProbe(host, port)
+	if err != nil {
+		return exitErr(2, "drill dns: %v", err)
+	}
+	fmt.Fprintf(os.Stderr, "amberctl: drill dns OK (%s) %s\n",
+		net.JoinHostPort(host, strconv.Itoa(port)), detail)
 	return nil
 }
 

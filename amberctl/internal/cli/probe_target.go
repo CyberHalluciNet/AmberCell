@@ -28,6 +28,7 @@ var nativePort = map[string]int{
 	"dockerapi": 2375,
 	"kubelet":   10250,
 	"ollama":    11434,
+	"dns":       53,
 }
 
 // labHostPortEnv maps svc → env var for lab published host port.
@@ -48,6 +49,7 @@ var labHostPortEnv = map[string]string{
 	"dockerapi": "AMBER_DOCKERAPI_HOST_PORT",
 	"kubelet":   "AMBER_KUBELET_HOST_PORT",
 	"ollama":    "AMBER_OLLAMA_HOST_PORT",
+	"dns":       "AMBER_DNS_HOST_PORT",
 }
 
 var labHostPortDefault = map[string]string{
@@ -67,6 +69,7 @@ var labHostPortDefault = map[string]string{
 	"dockerapi": "2375",
 	"kubelet":   "10250",
 	"ollama":    "11434",
+	"dns":       "1053",
 }
 
 var drillHostEnv = map[string]string{
@@ -86,6 +89,7 @@ var drillHostEnv = map[string]string{
 	"dockerapi": "AMBER_DOCKERAPI_DRILL_HOST",
 	"kubelet":   "AMBER_KUBELET_DRILL_HOST",
 	"ollama":    "AMBER_OLLAMA_DRILL_HOST",
+	"dns":       "AMBER_DNS_DRILL_HOST",
 }
 
 // resolveProbeAddr picks production cell IP+native port when production profile

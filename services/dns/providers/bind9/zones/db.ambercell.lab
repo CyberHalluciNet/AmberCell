@@ -1,0 +1,22 @@
+$ORIGIN ambercell.lab.
+$TTL 3600
+@	IN SOA ns.ambercell.lab. hostmaster.ambercell.lab. (
+		2026100700 ; serial
+		7200       ; refresh
+		3600       ; retry
+		1209600    ; expire
+		3600 )     ; minimum
+@	IN NS  ns.ambercell.lab.
+@	IN MX  10 mail.ambercell.lab.
+ns	IN A   10.20.30.53
+www	IN A   10.20.30.80
+mail	IN A   10.20.30.25
+vpn	IN A   10.20.30.44
+dev	IN A   10.20.30.22
+staging	IN A   10.20.30.23
+git	IN A   10.20.30.31
+jenkins	IN A   10.20.30.32
+backup	IN A   10.20.30.33
+files	IN A   10.20.30.34
+; Static lure TXT; dynamic canaries remain host-generated (seed manifest).
+canary	IN TXT "ambercell-dns-lure-01"

@@ -106,6 +106,11 @@ var Catalog = []CellOption{
 		{ID: "ollama", Desc: "Ollama"},
 		{ID: "localai", Desc: "LocalAI"},
 	}},
+	{Svc: "dns", ExtraHint: "AMBER_DNS_HOST_PORT", Providers: []ProviderOption{
+		{ID: "coredns", Desc: "CoreDNS (default DNS)"},
+		{ID: "bind9", Desc: "ISC BIND9"},
+		{ID: "unbound", Desc: "Unbound"},
+	}},
 }
 
 // AvailableProviders returns premade providers that have a Dockerfile under root.

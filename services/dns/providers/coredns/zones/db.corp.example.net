@@ -1,0 +1,20 @@
+$ORIGIN corp.example.net.
+$TTL 3600
+@	IN SOA ns.corp.example.net. hostmaster.corp.example.net. (
+		2026100700 ; serial
+		7200       ; refresh
+		3600       ; retry
+		1209600    ; expire
+		3600 )     ; minimum
+@	IN NS  ns.corp.example.net.
+@	IN MX  10 mail.corp.example.net.
+ns	IN A   10.20.31.53
+; Personas match the SMTP/POP3 lure mailboxes (hr/finance/admin/support).
+hr	IN A   10.20.31.10
+finance	IN A   10.20.31.11
+admin	IN A   10.20.31.12
+support	IN A   10.20.31.13
+intranet	IN A   10.20.31.20
+wiki	IN A   10.20.31.21
+mail	IN A   10.20.31.25
+autodiscover	IN A   10.20.31.26

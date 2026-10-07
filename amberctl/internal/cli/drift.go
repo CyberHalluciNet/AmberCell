@@ -32,7 +32,7 @@ func runStatusDrift() error {
 	for _, svc := range []string{
 		"ftp", "telnet", "smtp", "pop3", "ssh", "redis", "mqtt",
 		"http", "mysql", "postgres", "smb", "mongo", "elastic",
-		"dockerapi", "kubelet", "ollama",
+		"dockerapi", "kubelet", "ollama", "dns",
 	} {
 		if err := driftOne(svc, root); err != nil {
 			fmt.Fprintf(os.Stderr, "drift %s: %v\n", svc, err)

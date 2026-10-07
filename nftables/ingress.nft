@@ -29,6 +29,7 @@ define CELL_ELASTIC_IP = 172.30.130.10
 define CELL_DOCKERAPI_IP = 172.30.140.10
 define CELL_KUBELET_IP = 172.30.150.10
 define CELL_OLLAMA_IP = 172.30.160.10
+define CELL_DNS_IP = 172.30.170.10
 # Stage-1: host DNAT for cell DNS → sinkhole on ambermgmt (see ops/dns-sinkhole/)
 define DNS_SINKHOLE_IP = 172.31.10.53
 # Set to the ambernet bridge name (`docker network inspect ambernet -f '{{.Id}}'` / br-*).
@@ -96,5 +97,12 @@ table inet ambercell {
 
 		# Wave E (Stage-7) — Ollama / LLM API surface
 		iifname $WAN_IFACE tcp dport 11434 dnat to $CELL_OLLAMA_IP:11434
+
+		# Wave F — DNS (udp + tcp 53). Authoritative-only honeypot. Rule order
+		# matters: this WAN rule and the ambernet sinkhole rule above are
+		# iifname-disjoint, so cell-originated udp/53 still goes to the
+		# sinkhole — never upstream Internet (G13).
+		iifname $WAN_IFACE udp dport 53 dnat to $CELL_DNS_IP:53
+		iifname $WAN_IFACE tcp dport 53 dnat to $CELL_DNS_IP:53
 	}
 }

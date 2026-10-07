@@ -237,6 +237,19 @@ var Cells = map[string]CellSpec{
 		DefaultCellIP:  "172.30.160.10",
 		ExtraProfiles:  []string{"wave-e"},
 	},
+	"dns": {
+		Svc:            "dns",
+		Collector:      "dns-collector",
+		Hi:             "dns-hi",
+		CollectorImage: "ambercell-dns-collector:local",
+		HiImageFmt:     "ambercell-dns-hi-%s:local",
+		ProviderEnv:    "AMBER_DNS_PROVIDER",
+		DefaultProv:    "coredns",
+		HiDigestEnv:    "AMBER_DNS_HI_DIGEST",
+		CellIPEnv:      "AMBER_DNS_CELL_IP",
+		DefaultCellIP:  "172.30.170.10",
+		ExtraProfiles:  []string{"wave-f"},
+	},
 }
 
 // LogInvokerUID writes uid to stderr for lifecycle auditing.
@@ -687,7 +700,7 @@ func PS() error {
 }
 
 // Legacy aliases for Stage-0B call sites.
-func UpFTP() error             { return UpCell("ftp") }
-func StopFTPHI() error         { return StopHI("ftp") }
-func StopFTPCollector() error  { return StopCollector("ftp") }
-func DownFTP() error           { return DownCell("ftp") }
+func UpFTP() error            { return UpCell("ftp") }
+func StopFTPHI() error        { return StopHI("ftp") }
+func StopFTPCollector() error { return StopCollector("ftp") }
+func DownFTP() error          { return DownCell("ftp") }

@@ -34,12 +34,15 @@ Darwin lab **does not** satisfy G1–G11 (`tests/test_stage4_verify.sh` reports 
 - Wave D/E (Stage-7): `export COMPOSE_PROFILES=lab,wave-d,wave-e` then `amberctl up dockerapi|kubelet|ollama`
   - Trap cells (**G4/G8**): dockerapi/kubelet are HTTP mocks only — no host engine socket, no real cluster.
   - Lab ports: Docker API `${AMBER_DOCKERAPI_HOST_PORT:-2375}`, kubelet `10250`, Ollama mock `11434`.
-- Drill: `amberctl drill …` includes `http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama`
-- Smoke: `AMBER_FTP_HOST_PORT=2121 ./tests/test_smoke_ftp.sh`; mail: `./tests/test_smoke_mail.sh`; Wave A: `./tests/test_smoke_wave_a.sh`; Wave B+C: `./tests/test_smoke_wave_bc.sh`; Wave D+E: `./tests/test_smoke_wave_de.sh` · G4/G8 static: `./tests/test_g4_g8_wave_d.sh` (`AMBER_SMOKE_SKIP_ELASTIC=1` if RAM constrained)
+- Wave F (post-Submit): `export COMPOSE_PROFILES=lab,core,wave-f` then `amberctl up dns`
+  - Lab DNS: `127.0.0.1:${AMBER_DNS_HOST_PORT:-1053}` (udp+tcp); authoritative-only — no recursion (**G13**).
+  - Providers: coredns (default) / bind9 / unbound; own image via `AMBER_DNS_HI_IMAGE` / `AMBER_DNS_PROVIDER_CONTEXT` ([providers.md](providers.md)).
+- Drill: `amberctl drill …` includes `http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama`; `amberctl drill dns` sends a lure-zone UDP query (NOERROR expected).
+- Smoke: `AMBER_FTP_HOST_PORT=2121 ./tests/test_smoke_ftp.sh`; mail: `./tests/test_smoke_mail.sh`; Wave A: `./tests/test_smoke_wave_a.sh`; Wave B+C: `./tests/test_smoke_wave_bc.sh`; Wave D+E: `./tests/test_smoke_wave_de.sh`; Wave F: `./tests/test_smoke_wave_f.sh` · G4/G8 static: `./tests/test_g4_g8_wave_d.sh` (`AMBER_SMOKE_SKIP_ELASTIC=1` if RAM constrained)
 - Liveness (optional): `amberctl liveness --once` or long-running `amberctl liveness`
 - Drift: `amberctl status --drift` (compose/nft/seed/policy hashes + per-cell provider/digest)
 - Replay CI: `./tests/test_stage3_ci.sh` · Stage-4: `./tests/test_stage4_ci.sh`
-- Publish dead drop: `amberctl publish` (class `summary` default) → `/var/ambercell/deaddrop/`
+- Publish dead drop: `amberctl publish` (class `summary` default) → `/var/ambercell/deaddrop/` — publish/consume + sensor deployment: [`DEADDROP.md`](DEADDROP.md)
 - Review queue: `python3 manager/review_queue.py --scan` · `amberctl ai review` · `amberctl ai approve ID`
 - Webhooks: `AMBER_WEBHOOK_URL` + async breaker; spills to `alerts/failed/`; never blocks rebuild
 - Replay: `amberctl replay --diff --actual GOLDEN GOLDEN`
@@ -91,5 +94,6 @@ Darwin lab **does not** satisfy G1–G11 (`tests/test_stage4_verify.sh` reports 
 
 - Architecture: [`DESIGN.md`](DESIGN.md)
 - Threats: [`THREAT-MODEL.md`](THREAT-MODEL.md)
+- Dead drop + sensors: [`DEADDROP.md`](DEADDROP.md)
 - Plan: [`../plan.md`](../plan.md)
 - License: [`../LICENSE`](../LICENSE) (AmberCell Public Source License), [`../COMMERCIAL.md`](../COMMERCIAL.md)

@@ -16,7 +16,7 @@ func runPublish(args []string) error {
 	fs.SetOutput(os.Stderr)
 	class := fs.String("class", "summary", "summary|full")
 	includePcap := fs.Bool("pcap", false, "include closed pcap slices (opt-in, large)")
-	svc := fs.String("svc", "", "optional filter: ftp|telnet|smtp|pop3")
+	svc := fs.String("svc", "", "optional svc filter (e.g. ftp, ssh, dns)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

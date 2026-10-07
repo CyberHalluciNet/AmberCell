@@ -32,10 +32,10 @@ func runLiveness(args []string) error {
 		switch a {
 		case "--once":
 			once = true
-		case "ftp", "telnet", "smtp", "pop3", "ssh", "redis", "mqtt", "http", "mysql", "postgres", "smb", "mongo", "elastic", "dockerapi", "kubelet", "ollama":
+		case "ftp", "telnet", "smtp", "pop3", "ssh", "redis", "mqtt", "http", "mysql", "postgres", "smb", "mongo", "elastic", "dockerapi", "kubelet", "ollama", "dns":
 			svcs = []string{a}
 		case "-h", "--help":
-			fmt.Fprintln(os.Stderr, "usage: amberctl liveness [--once] [ftp|telnet|smtp|pop3]")
+			fmt.Fprintln(os.Stderr, "usage: amberctl liveness [--once] [ftp|telnet|smtp|pop3|dns]")
 			return nil
 		}
 	}
@@ -105,6 +105,14 @@ func probeFor(svc string) (probeTarget, error) {
 }
 
 func probeOnce(t probeTarget) (bool, string) {
+	// DNS is UDP: send a lure-zone A query and expect a NOERROR response.
+	if t.Svc == "dns" {
+		detail, err := dnsUDPProbe(t.Host, t.Port)
+		if err != nil {
+			return false, err.Error()
+		}
+		return true, detail
+	}
 	addr := net.JoinHostPort(t.Host, strconv.Itoa(t.Port))
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	if err != nil {
