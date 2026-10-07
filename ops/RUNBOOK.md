@@ -233,7 +233,7 @@ Default class **summary** (no passwords, transcript bodies, artifact bytes, pcap
 
 Optional S3 mirror after local success: `AMBER_DEADDROP_S3_URI=s3://bucket/prefix/` (SSE, block public access; write keys only in `/etc/ambercell/`).
 
-Consumers pull drop or S3 only — **never** ambernet, live JSONL mounts, or honeypot shell.
+Consumers pull drop or S3 only — **never** ambernet, live JSONL mounts, or honeypot shell. Publish only reads closed segments — an active `*.jsonl.active` file is never copied into a bundle, so no bundle contains a partially written record.
 
 ### 2.7 Canary monitor + webhooks
 

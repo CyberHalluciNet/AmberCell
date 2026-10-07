@@ -29,7 +29,7 @@
     "encoding": { "type": "string", "enum": ["utf-8", "binary-base64", "pty"] },
     "path": { "type": "string", "description": "Relative path under /var/ambercell/transcripts/" },
     "byte_length": { "type": "integer", "minimum": 0 },
-    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "closed": { "type": "boolean" }
   }
 }

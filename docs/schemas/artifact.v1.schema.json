@@ -34,7 +34,7 @@
     "filename": { "type": "string" },
     "content_type": { "type": "string" },
     "byte_length": { "type": "integer", "minimum": 0 },
-    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "yara_tags": {
       "type": "array",
       "items": { "type": "string" }

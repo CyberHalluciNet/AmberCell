@@ -1,7 +1,7 @@
 {
   "schema_version": "rawflow.v1",
   "seq_id": 10482,
-  "session_id": "fp_01HXY",
+  "session_id": "fp_0CB92",
   "svc": "ftp",
   "provider_id": "vsftpd",
   "cell_id": "ftp-cell-01",
