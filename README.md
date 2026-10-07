@@ -83,6 +83,7 @@ Requires Docker 24+ and Compose v2. Production: [`ops/RUNBOOK.md`](ops/RUNBOOK.m
 - [`docs/providers.md`](docs/providers.md) — provider_contract.v1 + own Docker
 - [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) — adversary model
 - [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — operator guide
+- [`docs/DEADDROP.md`](docs/DEADDROP.md) — dead drop (publish/consume) + sensor deployment for remote launchers
 - [`ops/RUNBOOK.md`](ops/RUNBOOK.md) — production host ops
 - [`SECURITY.md`](SECURITY.md) — vulnerability reporting
 - [`LICENSE`](LICENSE) / [`COMMERCIAL.md`](COMMERCIAL.md) — Public Source License + OEM
