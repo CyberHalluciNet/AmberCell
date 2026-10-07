@@ -1,9 +1,10 @@
 """Parse tcpdump summary-line DNS decode (udp/tcp 53) into structured exchanges.
 
 tcpdump decodes DNS natively; we parse its summary lines instead of raw payload
-bytes (no -A). Query lines carry a ``?``-suffixed qtype token; response lines
-carry ``an/ns/ar`` counters and an optional rcode token (tcpdump's historic
-"RefUsed" spelling included).
+bytes (no -A). Query lines carry a ``?``-suffixed qtype token; non-IN classes
+appear as ``TXT CH? name`` (modern tcpdump). Response lines carry ``an/ns/ar``
+counters and an optional rcode token (tcpdump's historic "RefUsed" spelling
+included).
 """
 
 from __future__ import annotations
@@ -21,8 +22,16 @@ _PREFIX = re.compile(
 
 _QID = re.compile(r"^(?P<qid>\d{1,5})(?P<flags>[\*\+\-\|\$%]*)(?P<body>.*)$")
 _EDNS = re.compile(r"\[\d+au\]")
+# Modern tcpdump: "TXT CH? version.bind." — class sits between type and '?'.
+# Legacy / alt: "TXT? version.bind. CH" or "TXT? version.bind. (CH)".
 _QUERY = re.compile(
-    r"(?P<qtype>[A-Za-z][A-Za-z0-9]*)\?\s(?P<qname>\S+?)(?:\.)?(?:\s+\((?P<len>\d+)\))?\s*$"
+    r"(?P<qtype>[A-Za-z][A-Za-z0-9]*)"
+    r"(?:\s+(?P<qclass>CH|HS|IN|ANY))?"
+    r"\?\s(?P<qname>\S+?)"
+    r"(?:\.)?"
+    r"(?:\s+(?P<qclass_trail>CH|HS|IN|ANY))?"
+    r"(?:\s+\((?P<len>\d+|CH|HS|IN|ANY)\))?"
+    r"\s*$"
 )
 _COUNTS = re.compile(r"(?P<an>\d+)/(?P<ns>\d+)/(?P<ar>\d+)")
 _RCODE = re.compile(
@@ -32,12 +41,41 @@ _LEN = re.compile(r"\((?P<len>\d+)\)\s*$")
 RCODE_MAP = {"RefUsed": "Refused"}
 
 AXFR_TYPES = ("AXFR", "IXFR")
+_CHAOS_CLASSES = frozenset({"CH", "CHAOS"})
+# Lab publish / host-side capture can show these as the packet destination
+# instead of the cell IP. Never treat "any dst port 53" as inbound (G13).
+RELAX_DST_IPS = frozenset({"127.0.0.1", "0.0.0.0"})
+
+
+def toward_cell(rec: dict, *, cell_ip: str, relax: bool) -> bool:
+    """Client → cell query direction (never matches cell → external resolver)."""
+    if rec["dst_port"] != 53:
+        return False
+    if rec["dst_ip"] == cell_ip:
+        return True
+    return relax and rec["dst_ip"] in RELAX_DST_IPS
+
+
+def from_cell(rec: dict, *, cell_ip: str, relax: bool) -> bool:
+    """Cell → client (or cell → upstream) with source port 53."""
+    if rec["src_port"] != 53:
+        return False
+    if rec["src_ip"] == cell_ip:
+        return True
+    return relax and rec["src_ip"] in RELAX_DST_IPS
 
 
 def parse_ts(m: re.Match) -> str:
     frac = m.group("time").split(".", 1)[1]
     frac = (frac + "000000000")[:9]
     return f"{m.group('date')}T{m.group('time').split('.')[0]}.{frac}Z"
+
+
+def is_chaos_probe(rec: dict) -> bool:
+    """True when the query is CHAOS-class (tcpdump: ``TXT CH? …`` / ``CH``)."""
+    qclass = (rec.get("qclass") or "").upper()
+    qtype = (rec.get("qtype") or "").upper()
+    return qclass in _CHAOS_CLASSES or qtype in _CHAOS_CLASSES
 
 
 def parse_dns_line(line: str) -> dict | None:
@@ -60,6 +98,7 @@ def parse_dns_line(line: str) -> dict | None:
         "update": False,
         "edns": False,
         "length": 0,
+        "qclass": "IN",
     }
     rest = m.group("rest")
     qm = _QID.match(rest)
@@ -89,11 +128,22 @@ def parse_dns_line(line: str) -> dict | None:
 
     qmatch = _QUERY.search(body)
     if qmatch is not None:
+        qclass = qmatch.group("qclass") or qmatch.group("qclass_trail") or "IN"
+        paren = qmatch.group("len")
+        length = rec["length"]
+        if paren is not None:
+            if paren.isdigit():
+                length = int(paren)
+            elif paren.upper() in ("CH", "HS", "IN", "ANY") and qmatch.group("qclass") is None:
+                # "TXT? version.bind. (CH)" — class was in the paren slot.
+                qclass = paren.upper()
         rec.update(
             kind="query",
             qtype=qmatch.group("qtype"),
             qname=qmatch.group("qname").rstrip("."),
+            qclass=qclass.upper(),
             rcode="",
+            length=length,
         )
         return rec
 

@@ -26,7 +26,13 @@ from ambercell.state import write_cell_state
 from ambercell.tcpdump import TcpdumpStream
 from ambercell.timeutil import utc_now_rfc3339_nano
 
-from dns_collector.parse import AXFR_TYPES, parse_dns_line
+from dns_collector.parse import (
+    AXFR_TYPES,
+    from_cell,
+    is_chaos_probe,
+    parse_dns_line,
+    toward_cell,
+)
 
 log = logging.getLogger("dns_collector")
 
@@ -135,7 +141,7 @@ def main() -> int:
         }
 
     def emit_raw_flow(rec: dict, session_id: str, status: str, guess: str) -> None:
-        inbound = rec["dst_ip"] == CELL_IP or (relax and rec["dst_ip"] in ("127.0.0.1", "0.0.0.0"))
+        inbound = toward_cell(rec, cell_ip=CELL_IP, relax=relax)
         length = rec.get("length", 0)
         raw_flows.emit(
             {
@@ -172,16 +178,19 @@ def main() -> int:
                     "qid": rec["qid"],
                     "qtype": qtype,
                     "qname": rec.get("qname", ""),
+                    "qclass": rec.get("qclass", "IN"),
                     "transport": rec["transport"],
                 }
             )
-        elif qtype == "CHAOS":
+        elif is_chaos_probe(rec):
             events.emit(
                 {
                     **base_record(rec, session_id),
                     "event": "dns.chaos_probe",
                     "qid": rec["qid"],
+                    "qtype": qtype,
                     "qname": rec.get("qname", ""),
+                    "qclass": rec.get("qclass", "CH"),
                     "transport": rec["transport"],
                 }
             )
@@ -209,6 +218,7 @@ def main() -> int:
                     "qid": rec["qid"],
                     "qtype": rec.get("qtype", ""),
                     "qname": rec.get("qname", ""),
+                    "qclass": rec.get("qclass", "IN"),
                     "dns_flags": rec.get("dns_flags", ""),
                     "edns": rec.get("edns", False),
                     "truncated": rec.get("truncated", False),
@@ -257,6 +267,7 @@ def main() -> int:
                     "qid": rec["qid"],
                     "qtype": rec.get("qtype", ""),
                     "qname": rec.get("qname", ""),
+                    "qclass": rec.get("qclass", "IN"),
                     "dns_flags": rec.get("dns_flags", ""),
                     "edns": rec.get("edns", False),
                     "truncated": rec.get("truncated", False),
@@ -273,11 +284,9 @@ def main() -> int:
         if rec["kind"] == "undecoded":
             handle_other(rec)
             return
-        to_cell = rec["dst_port"] == 53 and (rec["dst_ip"] == CELL_IP or relax)
-        from_cell = rec["src_port"] == 53 and (rec["src_ip"] == CELL_IP or relax)
-        if to_cell:
+        if toward_cell(rec, cell_ip=CELL_IP, relax=relax):
             handle_query(rec)
-        elif from_cell and rec["kind"] == "response":
+        elif from_cell(rec, cell_ip=CELL_IP, relax=relax) and rec["kind"] == "response":
             handle_response(rec)
         else:
             # From-cell queries (recursion attempts — G13 signal) and any

@@ -12,6 +12,16 @@ bumping a schema does not imply an app major bump, and vice versa.
 
 ## [Unreleased]
 
+### Fixed
+
+- DNS collector: classify `dns.chaos_probe` from tcpdump's `TXT CH?` / trailing
+  `CH` class forms (was only matching literal qtype `CHAOS`); record `qclass`.
+- DNS collector: lab `AMBER_DNS_RELAX_DST` only accepts loopback/`0.0.0.0` as
+  alternate cell destinations — not every udp/53 packet (preserves G13
+  from-cell recursion path).
+- `amberctl drill`/`liveness` DNS probe queries `www.ambercell.lab` so unbound
+  (no apex A in local-data) matches coredns/bind9.
+
 ### Added
 
 - Provider contract v1 (`docs/providers.md`) and own-Docker env:

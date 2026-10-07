@@ -320,12 +320,14 @@ func drillMQTT() error {
 	return nil
 }
 
-// dnsUDPProbe sends a minimal A query for the ambercell.lab lure zone and
-// validates a DNS response (matching qid, QR bit, NOERROR). Shared by
-// `amberctl drill dns` and the dns liveness probe.
+// dnsUDPProbe sends a minimal A query for a lure-zone name present in every
+// premade provider (www.ambercell.lab) and validates a DNS response (matching
+// qid, QR bit, NOERROR). Shared by `amberctl drill dns` and the dns liveness
+// probe. Apex ambercell.lab has no A in unbound local-data (NXDOMAIN), so the
+// probe must use a record that all three providers answer.
 func dnsUDPProbe(host string, port int) (string, error) {
 	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	const probeName = "ambercell.lab"
+	const probeName = "www.ambercell.lab"
 	qid := uint16(0x4143)
 	query := buildDNSQuery(qid, probeName)
 	conn, err := net.DialTimeout("udp", addr, 5*time.Second)
