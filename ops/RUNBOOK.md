@@ -184,11 +184,17 @@ done
 ./amberctl/amberctl drill elastic
 ```
 
-Wave A lab smoke: `./tests/test_smoke_wave_a.sh` · Wave B+C: `./tests/test_smoke_wave_bc.sh` · Wave D+E: `./tests/test_smoke_wave_de.sh` (Darwin/Linux; does **not** claim G1–G11 green).
+Wave A lab smoke: `./tests/test_smoke_wave_a.sh` · Wave B+C: `./tests/test_smoke_wave_bc.sh` · Wave D+E: `./tests/test_smoke_wave_de.sh` (Darwin/Linux; does **not** claim G1–G11 green). Wave F: `./tests/test_smoke_wave_f.sh` · Wave G: `./tests/test_smoke_wave_g.sh` · Wave H: `./tests/test_smoke_wave_h.sh`.
 
 **Wave D ingress (production):** DNAT **2375** → dockerapi trap (`172.30.140.10`), **10250** → kubelet trap (`172.30.150.10`). Profiles: `production,wave-d`. These cells are **API mocks only** — never mount host `docker.sock`, never run `dockerd`, never schedule pods on a real cluster (**G4/G8**). Static checks: `./tests/test_g4_g8_wave_d.sh`.
 
 **Wave E ingress (production):** DNAT **11434** → ollama mock (`172.30.160.10`). Profile: `production,wave-e`. Default provider is CPU **mock** with stub model tags; model pulls are recorded, not executed against the public internet from the cell.
+
+**Wave F ingress (production):** DNAT **udp+tcp 53** → dns cell (`172.30.170.10`, authoritative-only coredns/bind9/unbound — **no recursion, G13**). Profile: `production,wave-f`. Cell-originated udp/53 still goes to the ambermgmt sinkhole (rule order in `nftables/ingress.nft`). Smoke: `./tests/test_smoke_wave_f.sh`.
+
+**Wave G ingress (production):** DNAT **udp 69 + 30050-30089** → tftp (`172.30.180.10`), **udp+tcp 161** → snmp (`172.30.190.10`), **udp 123** → ntp (`172.30.200.10`), **tcp+udp 514** → syslog (`172.30.210.10`), **tcp+udp 5060** → sip (`172.30.220.10`), **tcp 389** → ldap (`172.30.230.10`, 1g tier — slapd idles ~700 MB). Profile: `production,wave-g`. All real daemons; ntp/syslog/ldap are **beta** (event decode best-effort). Smoke: `./tests/test_smoke_wave_g.sh`.
+
+**Wave H ingress (production):** DNAT **tcp 143** → imap (`172.30.240.10`), **tcp+udp 11211** → memcached (`172.30.250.10` — empty store, reflection answers ~1×, G13 family), **tcp 3389** → rdp (`172.30.251.10` — xrdp without sesman: negotiation/TLS surface only), **tcp 5900** → vnc (`172.30.252.10` — open-VNC persona), **udp 137** → netbios (`172.30.253.10` — nmbd names FILESRV01/BACKUP01/PRINT01). Profile: `production,wave-h`. Smoke: `./tests/test_smoke_wave_h.sh`. Remote-tunnel providers (`AMBER_<SVC>_PROVIDER=remote` + `AMBER_<SVC>_REMOTE_ADDR`, **G14**) exist for all Wave F/G/H cells: add the backend to the operator egress allowlist — relays may never widen general cell egress.
 
 ### 2.3 Logs
 
@@ -285,7 +291,7 @@ bash tests/test_stage4_verify.sh
 AMBER_RUN_PRODUCTION_VERIFY=1 COMPOSE_PROFILES=production,core bash tests/test_stage4_verify.sh
 ```
 
-See [`../tests/test_stage4_verify.sh`](../tests/test_stage4_verify.sh) for G1–G11 mapping. **G4/G8** (no host orchestration) apply when trap cells exist (Stage-7). **G9** documented above for ssh wave.
+See [`../tests/test_stage4_verify.sh`](../tests/test_stage4_verify.sh) for the kill-bar mapping (G1–G11 harness; G12 dead-drop encryption, G13 dns/memcached amplification, and G14 remote-backend egress are enforced by config review + the wave smokes). **G4/G8** (no host orchestration) apply when trap cells exist (Stage-7). **G9** documented above for ssh wave.
 
 ---
 

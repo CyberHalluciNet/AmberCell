@@ -174,7 +174,7 @@ Host prep for production (`userns-remap`, sysctls, `amber`/`amber-drop` groups, 
 
 ### Choose the service set
 
-`COMPOSE_PROFILES` selects cells: `core` (smtp, pop3, ftp, telnet), `wave-a` (ssh, redis, mqtt), `wave-b`/`wave-c` (http, mysql, postgres / smb, mongo, elastic), `wave-d`/`wave-e` (dockerapi, kubelet traps / ollama). A minimal edge sensor can run `production,core` only.
+`COMPOSE_PROFILES` selects cells: `core` (smtp, pop3, ftp, telnet), `wave-a` (ssh, redis, mqtt), `wave-b`/`wave-c` (http, mysql, postgres / smb, mongo, elastic), `wave-d`/`wave-e` (dockerapi, kubelet traps / ollama), `wave-f` (dns), `wave-g` (tftp, snmp, ntp, syslog, sip, ldap), `wave-h` (imap, memcached, rdp, vnc, netbios). A minimal edge sensor can run `production,core` only.
 
 ### Verify before exposing
 

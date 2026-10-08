@@ -17,6 +17,14 @@ jobs:
         run: pip install jsonschema
       - name: docker compose config (lab)
         run: COMPOSE_PROFILES=lab,core docker compose -f compose.yaml -f compose.lab.yaml config >/dev/null
+      - name: Compose wiring (all wave profiles, lab + production containment overlays)
+        # Cheap check, no image builds: every wave profile must resolve in both
+        # overlays after compose edits (catches env/port/profile drift).
+        run: |
+          for w in core wave-a wave-b wave-c wave-d wave-e wave-f wave-g wave-h; do
+            docker compose -f compose.yaml -f compose.lab.yaml --profile lab --profile "$w" config -q
+            docker compose -f compose.yaml -f compose.containment.yaml --profile production --profile "$w" config -q
+          done
       - name: Stage-3 checks
         run: bash tests/test_stage3_ci.sh
       - name: Stage-4 lab checks
