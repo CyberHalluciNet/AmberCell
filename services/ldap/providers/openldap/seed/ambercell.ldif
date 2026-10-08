@@ -1,0 +1,23 @@
+dn: dc=ambercell,dc=lab
+objectClass: dcObject
+objectClass: organization
+o: AmberCell
+dc: ambercell
+
+dn: ou=people,dc=ambercell,dc=lab
+objectClass: organizationalUnit
+ou: people
+
+dn: uid=jdoe,ou=people,dc=ambercell,dc=lab
+objectClass: inetOrgPerson
+uid: jdoe
+cn: Jane Doe
+sn: Doe
+mail: jdoe@ambercell.lab
+
+dn: uid=hr,ou=people,dc=ambercell,dc=lab
+objectClass: inetOrgPerson
+uid: hr
+cn: HR Persona
+sn: Persona
+mail: hr@corp.example.net

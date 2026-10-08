@@ -29,6 +29,17 @@ var nativePort = map[string]int{
 	"kubelet":   10250,
 	"ollama":    11434,
 	"dns":       53,
+	"tftp":      69,
+	"snmp":      161,
+	"ntp":       123,
+	"syslog":    514,
+	"sip":       5060,
+	"ldap":      389,
+	"imap":      143,
+	"memcached": 11211,
+	"rdp":       3389,
+	"vnc":       5900,
+	"netbios":   137,
 }
 
 // labHostPortEnv maps svc → env var for lab published host port.
@@ -50,6 +61,17 @@ var labHostPortEnv = map[string]string{
 	"kubelet":   "AMBER_KUBELET_HOST_PORT",
 	"ollama":    "AMBER_OLLAMA_HOST_PORT",
 	"dns":       "AMBER_DNS_HOST_PORT",
+	"tftp":      "AMBER_TFTP_HOST_PORT",
+	"snmp":      "AMBER_SNMP_HOST_PORT",
+	"ntp":       "AMBER_NTP_HOST_PORT",
+	"syslog":    "AMBER_SYSLOG_HOST_PORT",
+	"sip":       "AMBER_SIP_HOST_PORT",
+	"ldap":      "AMBER_LDAP_HOST_PORT",
+	"imap":      "AMBER_IMAP_HOST_PORT",
+	"memcached": "AMBER_MEMCACHED_HOST_PORT",
+	"rdp":       "AMBER_RDP_HOST_PORT",
+	"vnc":       "AMBER_VNC_HOST_PORT",
+	"netbios":   "AMBER_NETBIOS_HOST_PORT",
 }
 
 var labHostPortDefault = map[string]string{
@@ -70,6 +92,17 @@ var labHostPortDefault = map[string]string{
 	"kubelet":   "10250",
 	"ollama":    "11434",
 	"dns":       "1053",
+	"tftp":      "1069",
+	"snmp":      "1161",
+	"ntp":       "1123",
+	"syslog":    "1514",
+	"sip":       "15060",
+	"ldap":      "1389",
+	"imap":      "1143",
+	"memcached": "11211",
+	"rdp":       "13389",
+	"vnc":       "15900",
+	"netbios":   "1137",
 }
 
 var drillHostEnv = map[string]string{
@@ -90,6 +123,17 @@ var drillHostEnv = map[string]string{
 	"kubelet":   "AMBER_KUBELET_DRILL_HOST",
 	"ollama":    "AMBER_OLLAMA_DRILL_HOST",
 	"dns":       "AMBER_DNS_DRILL_HOST",
+	"tftp":      "AMBER_TFTP_DRILL_HOST",
+	"snmp":      "AMBER_SNMP_DRILL_HOST",
+	"ntp":       "AMBER_NTP_DRILL_HOST",
+	"syslog":    "AMBER_SYSLOG_DRILL_HOST",
+	"sip":       "AMBER_SIP_DRILL_HOST",
+	"ldap":      "AMBER_LDAP_DRILL_HOST",
+	"imap":      "AMBER_IMAP_DRILL_HOST",
+	"memcached": "AMBER_MEMCACHED_DRILL_HOST",
+	"rdp":       "AMBER_RDP_DRILL_HOST",
+	"vnc":       "AMBER_VNC_DRILL_HOST",
+	"netbios":   "AMBER_NETBIOS_DRILL_HOST",
 }
 
 // resolveProbeAddr picks production cell IP+native port when production profile

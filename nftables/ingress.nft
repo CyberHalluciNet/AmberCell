@@ -30,6 +30,17 @@ define CELL_DOCKERAPI_IP = 172.30.140.10
 define CELL_KUBELET_IP = 172.30.150.10
 define CELL_OLLAMA_IP = 172.30.160.10
 define CELL_DNS_IP = 172.30.170.10
+define CELL_TFTP_IP = 172.30.180.10
+define CELL_SNMP_IP = 172.30.190.10
+define CELL_NTP_IP = 172.30.200.10
+define CELL_SYSLOG_IP = 172.30.210.10
+define CELL_SIP_IP = 172.30.220.10
+define CELL_LDAP_IP = 172.30.230.10
+define CELL_IMAP_IP = 172.30.240.10
+define CELL_MEMCACHED_IP = 172.30.250.10
+define CELL_RDP_IP = 172.30.251.10
+define CELL_VNC_IP = 172.30.252.10
+define CELL_NETBIOS_IP = 172.30.253.10
 # Stage-1: host DNAT for cell DNS → sinkhole on ambermgmt (see ops/dns-sinkhole/)
 define DNS_SINKHOLE_IP = 172.31.10.53
 # Set to the ambernet bridge name (`docker network inspect ambernet -f '{{.Id}}'` / br-*).
@@ -104,5 +115,28 @@ table inet ambercell {
 		# sinkhole — never upstream Internet (G13).
 		iifname $WAN_IFACE udp dport 53 dnat to $CELL_DNS_IP:53
 		iifname $WAN_IFACE tcp dport 53 dnat to $CELL_DNS_IP:53
+
+		# Wave G — TFTP/SNMP/NTP/Syslog/SIP/LDAP. Real transports only
+		# (TFTP + NTP are UDP by RFC; SNMP/Syslog/SIP listen udp+tcp).
+		iifname $WAN_IFACE udp dport 69 dnat to $CELL_TFTP_IP:69
+		# dnsmasq tftp transfer range (hpa/atftpd use random ports — see providers.md)
+		iifname $WAN_IFACE udp dport 30050-30089 dnat to $CELL_TFTP_IP
+		iifname $WAN_IFACE udp dport 161 dnat to $CELL_SNMP_IP:161
+		iifname $WAN_IFACE tcp dport 161 dnat to $CELL_SNMP_IP:161
+		iifname $WAN_IFACE udp dport 123 dnat to $CELL_NTP_IP:123
+		iifname $WAN_IFACE tcp dport 514 dnat to $CELL_SYSLOG_IP:514
+		iifname $WAN_IFACE udp dport 514 dnat to $CELL_SYSLOG_IP:514
+		iifname $WAN_IFACE tcp dport 5060 dnat to $CELL_SIP_IP:5060
+		iifname $WAN_IFACE udp dport 5060 dnat to $CELL_SIP_IP:5060
+		iifname $WAN_IFACE tcp dport 389 dnat to $CELL_LDAP_IP:389
+
+		# Wave H — IMAP/memcached/RDP/VNC/NetBIOS (real daemons). memcached answers
+		# udp reflection probes with empty NOT_FOUND only (no data loaded; G13 family).
+		iifname $WAN_IFACE tcp dport 143 dnat to $CELL_IMAP_IP:143
+		iifname $WAN_IFACE tcp dport 11211 dnat to $CELL_MEMCACHED_IP:11211
+		iifname $WAN_IFACE udp dport 11211 dnat to $CELL_MEMCACHED_IP:11211
+		iifname $WAN_IFACE tcp dport 3389 dnat to $CELL_RDP_IP:3389
+		iifname $WAN_IFACE tcp dport 5900 dnat to $CELL_VNC_IP:5900
+		iifname $WAN_IFACE udp dport 137 dnat to $CELL_NETBIOS_IP:137
 	}
 }

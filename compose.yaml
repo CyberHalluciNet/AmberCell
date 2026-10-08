@@ -1599,6 +1599,1030 @@ services:
       ambercell.svc: dns
       ambercell.role: hi
 
+  # Wave G — tftp (udp 69). Premade real daemon providers or the remote
+  # relay (AMBER_TFTP_PROVIDER=remote + AMBER_TFTP_REMOTE_ADDR=host:port).
+  tftp-collector:
+    profiles: ["wave-g"]
+    build:
+      context: .
+      dockerfile: collectors/tftp/Dockerfile
+    image: ambercell-tftp-collector:local
+    container_name: ambercell-tftp-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_TFTP_PROVIDER: ${AMBER_TFTP_PROVIDER:-dnsmasq}
+      AMBER_TFTP_CELL_IP: "172.30.180.10"
+      AMBER_TFTP_CELL_ID: tftp-cell-01
+      AMBER_TFTP_COLLECTOR_ID: tftp-collector-a
+      AMBER_TFTP_LOG_FIFO: /run/amber/log/tftp.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_TFTP_HI_DIGEST: ${AMBER_TFTP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-tftp-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_TFTP_RELAX_DST: ${AMBER_TFTP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.180.10
+    labels:
+      ambercell.svc: tftp
+      ambercell.role: collector
+
+  tftp-hi:
+    profiles: ["wave-g"]
+    build:
+      context: ${AMBER_TFTP_PROVIDER_CONTEXT:-services/tftp/providers/tftpd-hpa}
+      dockerfile: Dockerfile
+    image: ${AMBER_TFTP_HI_IMAGE:-ambercell-tftp-hi-tftpd-hpa:local}
+    container_name: ambercell-tftp-hi
+    network_mode: "service:tftp-collector"
+    depends_on:
+      tftp-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /srv:rw,noexec,nosuid,size=64m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_TFTP_PROVIDER: ${AMBER_TFTP_PROVIDER:-dnsmasq}
+      AMBER_TFTP_LOG_FIFO: /run/amber/log/tftp.fifo
+      AMBER_TFTP_REMOTE_ADDR: ${AMBER_TFTP_REMOTE_ADDR:-}
+      AMBER_TFTP_REMOTE_TRANSPORT: ${AMBER_TFTP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: tftp
+      ambercell.role: hi
+
+  # Wave G — snmp (udp+tcp 161). Premade real daemon providers or the remote
+  # relay (AMBER_SNMP_PROVIDER=remote + AMBER_SNMP_REMOTE_ADDR=host:port).
+  snmp-collector:
+    profiles: ["wave-g"]
+    build:
+      context: .
+      dockerfile: collectors/snmp/Dockerfile
+    image: ambercell-snmp-collector:local
+    container_name: ambercell-snmp-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_SNMP_PROVIDER: ${AMBER_SNMP_PROVIDER:-snmpd}
+      AMBER_SNMP_CELL_IP: "172.30.190.10"
+      AMBER_SNMP_CELL_ID: snmp-cell-01
+      AMBER_SNMP_COLLECTOR_ID: snmp-collector-a
+      AMBER_SNMP_LOG_FIFO: /run/amber/log/snmp.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_SNMP_HI_DIGEST: ${AMBER_SNMP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-snmp-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_SNMP_RELAX_DST: ${AMBER_SNMP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.190.10
+    labels:
+      ambercell.svc: snmp
+      ambercell.role: collector
+
+  snmp-hi:
+    profiles: ["wave-g"]
+    build:
+      context: ${AMBER_SNMP_PROVIDER_CONTEXT:-services/snmp/providers/snmpd}
+      dockerfile: Dockerfile
+    image: ${AMBER_SNMP_HI_IMAGE:-ambercell-snmp-hi-snmpd:local}
+    container_name: ambercell-snmp-hi
+    network_mode: "service:snmp-collector"
+    depends_on:
+      snmp-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /srv:rw,noexec,nosuid,size=64m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_SNMP_PROVIDER: ${AMBER_SNMP_PROVIDER:-snmpd}
+      AMBER_SNMP_LOG_FIFO: /run/amber/log/snmp.fifo
+      AMBER_SNMP_REMOTE_ADDR: ${AMBER_SNMP_REMOTE_ADDR:-}
+      AMBER_SNMP_REMOTE_TRANSPORT: ${AMBER_SNMP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: snmp
+      ambercell.role: hi
+
+  # Wave G — ntp (udp 123). Premade real daemon providers or the remote
+  # relay (AMBER_NTP_PROVIDER=remote + AMBER_NTP_REMOTE_ADDR=host:port).
+  ntp-collector:
+    profiles: ["wave-g"]
+    build:
+      context: .
+      dockerfile: collectors/ntp/Dockerfile
+    image: ambercell-ntp-collector:local
+    container_name: ambercell-ntp-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_NTP_PROVIDER: ${AMBER_NTP_PROVIDER:-chrony}
+      AMBER_NTP_CELL_IP: "172.30.200.10"
+      AMBER_NTP_CELL_ID: ntp-cell-01
+      AMBER_NTP_COLLECTOR_ID: ntp-collector-a
+      AMBER_NTP_LOG_FIFO: /run/amber/log/ntp.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_NTP_HI_DIGEST: ${AMBER_NTP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-ntp-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_NTP_RELAX_DST: ${AMBER_NTP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.200.10
+    labels:
+      ambercell.svc: ntp
+      ambercell.role: collector
+
+  ntp-hi:
+    profiles: ["wave-g"]
+    build:
+      context: ${AMBER_NTP_PROVIDER_CONTEXT:-services/ntp/providers/chrony}
+      dockerfile: Dockerfile
+    image: ${AMBER_NTP_HI_IMAGE:-ambercell-ntp-hi-chrony:local}
+    container_name: ambercell-ntp-hi
+    network_mode: "service:ntp-collector"
+    depends_on:
+      ntp-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /srv:rw,noexec,nosuid,size=64m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_NTP_PROVIDER: ${AMBER_NTP_PROVIDER:-chrony}
+      AMBER_NTP_LOG_FIFO: /run/amber/log/ntp.fifo
+      AMBER_NTP_REMOTE_ADDR: ${AMBER_NTP_REMOTE_ADDR:-}
+      AMBER_NTP_REMOTE_TRANSPORT: ${AMBER_NTP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: ntp
+      ambercell.role: hi
+
+  # Wave G — syslog (tcp+udp 514). Premade real daemon providers or the remote
+  # relay (AMBER_SYSLOG_PROVIDER=remote + AMBER_SYSLOG_REMOTE_ADDR=host:port).
+  syslog-collector:
+    profiles: ["wave-g"]
+    build:
+      context: .
+      dockerfile: collectors/syslog/Dockerfile
+    image: ambercell-syslog-collector:local
+    container_name: ambercell-syslog-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_SYSLOG_PROVIDER: ${AMBER_SYSLOG_PROVIDER:-rsyslog}
+      AMBER_SYSLOG_CELL_IP: "172.30.210.10"
+      AMBER_SYSLOG_CELL_ID: syslog-cell-01
+      AMBER_SYSLOG_COLLECTOR_ID: syslog-collector-a
+      AMBER_SYSLOG_LOG_FIFO: /run/amber/log/syslog.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_SYSLOG_HI_DIGEST: ${AMBER_SYSLOG_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-syslog-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_SYSLOG_RELAX_DST: ${AMBER_SYSLOG_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.210.10
+    labels:
+      ambercell.svc: syslog
+      ambercell.role: collector
+
+  syslog-hi:
+    profiles: ["wave-g"]
+    build:
+      context: ${AMBER_SYSLOG_PROVIDER_CONTEXT:-services/syslog/providers/rsyslog}
+      dockerfile: Dockerfile
+    image: ${AMBER_SYSLOG_HI_IMAGE:-ambercell-syslog-hi-rsyslog:local}
+    container_name: ambercell-syslog-hi
+    network_mode: "service:syslog-collector"
+    depends_on:
+      syslog-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /srv:rw,noexec,nosuid,size=64m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_SYSLOG_PROVIDER: ${AMBER_SYSLOG_PROVIDER:-rsyslog}
+      AMBER_SYSLOG_LOG_FIFO: /run/amber/log/syslog.fifo
+      AMBER_SYSLOG_REMOTE_ADDR: ${AMBER_SYSLOG_REMOTE_ADDR:-}
+      AMBER_SYSLOG_REMOTE_TRANSPORT: ${AMBER_SYSLOG_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: syslog
+      ambercell.role: hi
+
+  # Wave G — sip (tcp+udp 5060). Premade real daemon providers or the remote
+  # relay (AMBER_SIP_PROVIDER=remote + AMBER_SIP_REMOTE_ADDR=host:port).
+  sip-collector:
+    profiles: ["wave-g"]
+    build:
+      context: .
+      dockerfile: collectors/sip/Dockerfile
+    image: ambercell-sip-collector:local
+    container_name: ambercell-sip-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_SIP_PROVIDER: ${AMBER_SIP_PROVIDER:-kamailio}
+      AMBER_SIP_CELL_IP: "172.30.220.10"
+      AMBER_SIP_CELL_ID: sip-cell-01
+      AMBER_SIP_COLLECTOR_ID: sip-collector-a
+      AMBER_SIP_LOG_FIFO: /run/amber/log/sip.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_SIP_HI_DIGEST: ${AMBER_SIP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-sip-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_SIP_RELAX_DST: ${AMBER_SIP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.220.10
+    labels:
+      ambercell.svc: sip
+      ambercell.role: collector
+
+  sip-hi:
+    profiles: ["wave-g"]
+    build:
+      context: ${AMBER_SIP_PROVIDER_CONTEXT:-services/sip/providers/kamailio}
+      dockerfile: Dockerfile
+    image: ${AMBER_SIP_HI_IMAGE:-ambercell-sip-hi-kamailio:local}
+    container_name: ambercell-sip-hi
+    network_mode: "service:sip-collector"
+    depends_on:
+      sip-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /srv:rw,noexec,nosuid,size=64m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_SIP_PROVIDER: ${AMBER_SIP_PROVIDER:-kamailio}
+      AMBER_SIP_LOG_FIFO: /run/amber/log/sip.fifo
+      AMBER_SIP_REMOTE_ADDR: ${AMBER_SIP_REMOTE_ADDR:-}
+      AMBER_SIP_REMOTE_TRANSPORT: ${AMBER_SIP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: sip
+      ambercell.role: hi
+
+  # Wave G — ldap (tcp 389). Premade real daemon providers or the remote
+  # relay (AMBER_LDAP_PROVIDER=remote + AMBER_LDAP_REMOTE_ADDR=host:port).
+  ldap-collector:
+    profiles: ["wave-g"]
+    build:
+      context: .
+      dockerfile: collectors/ldap/Dockerfile
+    image: ambercell-ldap-collector:local
+    container_name: ambercell-ldap-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_LDAP_PROVIDER: ${AMBER_LDAP_PROVIDER:-openldap}
+      AMBER_LDAP_CELL_IP: "172.30.230.10"
+      AMBER_LDAP_CELL_ID: ldap-cell-01
+      AMBER_LDAP_COLLECTOR_ID: ldap-collector-a
+      AMBER_LDAP_LOG_FIFO: /run/amber/log/ldap.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_LDAP_HI_DIGEST: ${AMBER_LDAP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-ldap-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_LDAP_RELAX_DST: ${AMBER_LDAP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.230.10
+    labels:
+      ambercell.svc: ldap
+      ambercell.role: collector
+
+  ldap-hi:
+    profiles: ["wave-g"]
+    build:
+      context: ${AMBER_LDAP_PROVIDER_CONTEXT:-services/ldap/providers/openldap}
+      dockerfile: Dockerfile
+    image: ${AMBER_LDAP_HI_IMAGE:-ambercell-ldap-hi-openldap:local}
+    container_name: ambercell-ldap-hi
+    network_mode: "service:ldap-collector"
+    depends_on:
+      ldap-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 128
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /srv:rw,noexec,nosuid,size=64m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_LDAP_PROVIDER: ${AMBER_LDAP_PROVIDER:-openldap}
+      AMBER_LDAP_LOG_FIFO: /run/amber/log/ldap.fifo
+      AMBER_LDAP_REMOTE_ADDR: ${AMBER_LDAP_REMOTE_ADDR:-}
+      AMBER_LDAP_REMOTE_TRANSPORT: ${AMBER_LDAP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: ldap
+      ambercell.role: hi
+
+  # Wave H — imap (tcp 143). Real daemon (dovecot); remote relay provider also
+  # available (AMBER_IMAP_PROVIDER=remote + AMBER_IMAP_REMOTE_ADDR=host:port).
+  imap-collector:
+    profiles: ["wave-h"]
+    build:
+      context: .
+      dockerfile: collectors/imap/Dockerfile
+    image: ambercell-imap-collector:local
+    container_name: ambercell-imap-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_IMAP_PROVIDER: ${AMBER_IMAP_PROVIDER:-dovecot}
+      AMBER_IMAP_CELL_IP: "172.30.240.10"
+      AMBER_IMAP_CELL_ID: imap-cell-01
+      AMBER_IMAP_COLLECTOR_ID: imap-collector-a
+      AMBER_IMAP_LOG_FIFO: /run/amber/log/imap.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_IMAP_HI_DIGEST: ${AMBER_IMAP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-imap-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_IMAP_RELAX_DST: ${AMBER_IMAP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.240.10
+    labels:
+      ambercell.svc: imap
+      ambercell.role: collector
+
+  imap-hi:
+    profiles: ["wave-h"]
+    build:
+      context: ${AMBER_IMAP_PROVIDER_CONTEXT:-services/imap/providers/dovecot}
+      dockerfile: Dockerfile
+    image: ${AMBER_IMAP_HI_IMAGE:-ambercell-imap-hi-dovecot:local}
+    container_name: ambercell-imap-hi
+    network_mode: "service:imap-collector"
+    depends_on:
+      imap-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - NET_BIND_SERVICE
+      - SYS_CHROOT
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run:rw,nosuid,size=16m
+      - /var/lib/samba:rw,nosuid,size=32m
+      - /var/log:rw,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_IMAP_PROVIDER: ${AMBER_IMAP_PROVIDER:-dovecot}
+      AMBER_IMAP_LOG_FIFO: /run/amber/log/imap.fifo
+      AMBER_IMAP_REMOTE_ADDR: ${AMBER_IMAP_REMOTE_ADDR:-}
+      AMBER_IMAP_REMOTE_TRANSPORT: ${AMBER_IMAP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: imap
+      ambercell.role: hi
+
+  # Wave H — memcached (tcp+udp 11211). Real daemon (memcached); remote relay provider also
+  # available (AMBER_MEMCACHED_PROVIDER=remote + AMBER_MEMCACHED_REMOTE_ADDR=host:port).
+  memcached-collector:
+    profiles: ["wave-h"]
+    build:
+      context: .
+      dockerfile: collectors/memcached/Dockerfile
+    image: ambercell-memcached-collector:local
+    container_name: ambercell-memcached-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_MEMCACHED_PROVIDER: ${AMBER_MEMCACHED_PROVIDER:-memcached}
+      AMBER_MEMCACHED_CELL_IP: "172.30.250.10"
+      AMBER_MEMCACHED_CELL_ID: memcached-cell-01
+      AMBER_MEMCACHED_COLLECTOR_ID: memcached-collector-a
+      AMBER_MEMCACHED_LOG_FIFO: /run/amber/log/memcached.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_MEMCACHED_HI_DIGEST: ${AMBER_MEMCACHED_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-memcached-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_MEMCACHED_RELAX_DST: ${AMBER_MEMCACHED_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.250.10
+    labels:
+      ambercell.svc: memcached
+      ambercell.role: collector
+
+  memcached-hi:
+    profiles: ["wave-h"]
+    build:
+      context: ${AMBER_MEMCACHED_PROVIDER_CONTEXT:-services/memcached/providers/memcached}
+      dockerfile: Dockerfile
+    image: ${AMBER_MEMCACHED_HI_IMAGE:-ambercell-memcached-hi-memcached:local}
+    container_name: ambercell-memcached-hi
+    network_mode: "service:memcached-collector"
+    depends_on:
+      memcached-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run:rw,nosuid,size=16m
+      - /var/lib/samba:rw,nosuid,size=32m
+      - /var/log:rw,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_MEMCACHED_PROVIDER: ${AMBER_MEMCACHED_PROVIDER:-memcached}
+      AMBER_MEMCACHED_LOG_FIFO: /run/amber/log/memcached.fifo
+      AMBER_MEMCACHED_REMOTE_ADDR: ${AMBER_MEMCACHED_REMOTE_ADDR:-}
+      AMBER_MEMCACHED_REMOTE_TRANSPORT: ${AMBER_MEMCACHED_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: memcached
+      ambercell.role: hi
+
+  # Wave H — rdp (tcp 3389). Real daemon (xrdp); remote relay provider also
+  # available (AMBER_RDP_PROVIDER=remote + AMBER_RDP_REMOTE_ADDR=host:port).
+  rdp-collector:
+    profiles: ["wave-h"]
+    build:
+      context: .
+      dockerfile: collectors/rdp/Dockerfile
+    image: ambercell-rdp-collector:local
+    container_name: ambercell-rdp-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_RDP_PROVIDER: ${AMBER_RDP_PROVIDER:-xrdp}
+      AMBER_RDP_CELL_IP: "172.30.251.10"
+      AMBER_RDP_CELL_ID: rdp-cell-01
+      AMBER_RDP_COLLECTOR_ID: rdp-collector-a
+      AMBER_RDP_LOG_FIFO: /run/amber/log/rdp.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_RDP_HI_DIGEST: ${AMBER_RDP_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-rdp-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_RDP_RELAX_DST: ${AMBER_RDP_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.251.10
+    labels:
+      ambercell.svc: rdp
+      ambercell.role: collector
+
+  rdp-hi:
+    profiles: ["wave-h"]
+    build:
+      context: ${AMBER_RDP_PROVIDER_CONTEXT:-services/rdp/providers/xrdp}
+      dockerfile: Dockerfile
+    image: ${AMBER_RDP_HI_IMAGE:-ambercell-rdp-hi-xrdp:local}
+    container_name: ambercell-rdp-hi
+    network_mode: "service:rdp-collector"
+    depends_on:
+      rdp-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - NET_BIND_SERVICE
+      - SYS_CHROOT
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run:rw,nosuid,size=16m
+      - /var/lib/samba:rw,nosuid,size=32m
+      - /var/log:rw,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_RDP_PROVIDER: ${AMBER_RDP_PROVIDER:-xrdp}
+      AMBER_RDP_LOG_FIFO: /run/amber/log/rdp.fifo
+      AMBER_RDP_REMOTE_ADDR: ${AMBER_RDP_REMOTE_ADDR:-}
+      AMBER_RDP_REMOTE_TRANSPORT: ${AMBER_RDP_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: rdp
+      ambercell.role: hi
+
+  # Wave H — vnc (tcp 5900). Real daemon (tigervnc); remote relay provider also
+  # available (AMBER_VNC_PROVIDER=remote + AMBER_VNC_REMOTE_ADDR=host:port).
+  vnc-collector:
+    profiles: ["wave-h"]
+    build:
+      context: .
+      dockerfile: collectors/vnc/Dockerfile
+    image: ambercell-vnc-collector:local
+    container_name: ambercell-vnc-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_VNC_PROVIDER: ${AMBER_VNC_PROVIDER:-tigervnc}
+      AMBER_VNC_CELL_IP: "172.30.252.10"
+      AMBER_VNC_CELL_ID: vnc-cell-01
+      AMBER_VNC_COLLECTOR_ID: vnc-collector-a
+      AMBER_VNC_LOG_FIFO: /run/amber/log/vnc.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_VNC_HI_DIGEST: ${AMBER_VNC_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-vnc-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_VNC_RELAX_DST: ${AMBER_VNC_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.252.10
+    labels:
+      ambercell.svc: vnc
+      ambercell.role: collector
+
+  vnc-hi:
+    profiles: ["wave-h"]
+    build:
+      context: ${AMBER_VNC_PROVIDER_CONTEXT:-services/vnc/providers/tigervnc}
+      dockerfile: Dockerfile
+    image: ${AMBER_VNC_HI_IMAGE:-ambercell-vnc-hi-tigervnc:local}
+    container_name: ambercell-vnc-hi
+    network_mode: "service:vnc-collector"
+    depends_on:
+      vnc-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run:rw,nosuid,size=16m
+      - /var/lib/samba:rw,nosuid,size=32m
+      - /var/log:rw,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_VNC_PROVIDER: ${AMBER_VNC_PROVIDER:-tigervnc}
+      AMBER_VNC_LOG_FIFO: /run/amber/log/vnc.fifo
+      AMBER_VNC_REMOTE_ADDR: ${AMBER_VNC_REMOTE_ADDR:-}
+      AMBER_VNC_REMOTE_TRANSPORT: ${AMBER_VNC_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: vnc
+      ambercell.role: hi
+
+  # Wave H — netbios (udp 137). Real daemon (nmbd); remote relay provider also
+  # available (AMBER_NETBIOS_PROVIDER=remote + AMBER_NETBIOS_REMOTE_ADDR=host:port).
+  netbios-collector:
+    profiles: ["wave-h"]
+    build:
+      context: .
+      dockerfile: collectors/netbios/Dockerfile
+    image: ambercell-netbios-collector:local
+    container_name: ambercell-netbios-collector
+    init: true
+    oom_score_adj: -500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - ${AMBER_EVIDENCE_ROOT:-./.ambercell-data}:/var/ambercell
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_EVIDENCE_ROOT: /var/ambercell
+      AMBER_NETBIOS_PROVIDER: ${AMBER_NETBIOS_PROVIDER:-nmbd}
+      AMBER_NETBIOS_CELL_IP: "172.30.253.10"
+      AMBER_NETBIOS_CELL_ID: netbios-cell-01
+      AMBER_NETBIOS_COLLECTOR_ID: netbios-collector-a
+      AMBER_NETBIOS_LOG_FIFO: /run/amber/log/netbios.fifo
+      AMBER_IMAGE_DIGEST: ${AMBER_IMAGE_DIGEST:-}
+      AMBER_NETBIOS_HI_DIGEST: ${AMBER_NETBIOS_HI_DIGEST:-}
+      AMBER_CELL_INSTANCE_ID: ${AMBER_CELL_INSTANCE_ID:-netbios-lab-01}
+      AMBER_DEBUG_SCHEMA_VALIDATE: ${AMBER_DEBUG_SCHEMA_VALIDATE:-1}
+      AMBER_NETBIOS_RELAX_DST: ${AMBER_NETBIOS_RELAX_DST:-0}
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+      net.ipv6.conf.default.disable_ipv6: "1"
+    networks:
+      ambernet:
+        ipv4_address: 172.30.253.10
+    labels:
+      ambercell.svc: netbios
+      ambercell.role: collector
+
+  netbios-hi:
+    profiles: ["wave-h"]
+    build:
+      context: ${AMBER_NETBIOS_PROVIDER_CONTEXT:-services/netbios/providers/nmbd}
+      dockerfile: Dockerfile
+    image: ${AMBER_NETBIOS_HI_IMAGE:-ambercell-netbios-hi-nmbd:local}
+    container_name: ambercell-netbios-hi
+    network_mode: "service:netbios-collector"
+    depends_on:
+      netbios-collector:
+        condition: service_started
+    init: true
+    oom_score_adj: 500
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 256
+    stop_grace_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - CHOWN
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /var/run:rw,nosuid,size=16m
+      - /var/lib/samba:rw,nosuid,size=32m
+      - /var/log:rw,nosuid,size=16m
+    volumes:
+      - wave-log-fifo:/run/amber/log
+    environment:
+      AMBER_NETBIOS_PROVIDER: ${AMBER_NETBIOS_PROVIDER:-nmbd}
+      AMBER_NETBIOS_LOG_FIFO: /run/amber/log/netbios.fifo
+      AMBER_NETBIOS_REMOTE_ADDR: ${AMBER_NETBIOS_REMOTE_ADDR:-}
+      AMBER_NETBIOS_REMOTE_TRANSPORT: ${AMBER_NETBIOS_REMOTE_TRANSPORT:-both}
+    labels:
+      ambercell.svc: netbios
+      ambercell.role: hi
+
   # Control plane — ambermgmt only (cells have no route here; host DNAT sends udp/53).
   dns-sinkhole:
     profiles: ["core"]

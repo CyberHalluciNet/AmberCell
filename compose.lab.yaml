@@ -119,3 +119,86 @@ services:
       - "127.0.0.1:${AMBER_DNS_HOST_PORT:-1053}:53/tcp"
     environment:
       AMBER_DNS_RELAX_DST: ${AMBER_DNS_RELAX_DST:-1}
+
+  # Wave G — tftp (udp 69 + dnsmasq fixed transfer range; hpa/atftpd
+  # negotiate random transfer ports and only work for same-path clients)
+  tftp-collector:
+    ports:
+      - "127.0.0.1:${AMBER_TFTP_HOST_PORT:-1069}:69/udp"
+      - "127.0.0.1:30050-30089:30050-30089/udp"
+    environment:
+      AMBER_TFTP_RELAX_DST: ${AMBER_TFTP_RELAX_DST:-1}
+
+  # Wave G — snmp (udp+tcp 161)
+  snmp-collector:
+    ports:
+      - "127.0.0.1:${AMBER_SNMP_HOST_PORT:-1161}:161/udp"
+      - "127.0.0.1:${AMBER_SNMP_HOST_PORT:-1161}:161/tcp"
+    environment:
+      AMBER_SNMP_RELAX_DST: ${AMBER_SNMP_RELAX_DST:-1}
+
+  # Wave G — ntp (udp 123)
+  ntp-collector:
+    ports:
+      - "127.0.0.1:${AMBER_NTP_HOST_PORT:-1123}:123/udp"
+    environment:
+      AMBER_NTP_RELAX_DST: ${AMBER_NTP_RELAX_DST:-1}
+
+  # Wave G — syslog (tcp+udp 514)
+  syslog-collector:
+    ports:
+      - "127.0.0.1:${AMBER_SYSLOG_HOST_PORT:-1514}:514/tcp"
+      - "127.0.0.1:${AMBER_SYSLOG_HOST_PORT:-1514}:514/udp"
+    environment:
+      AMBER_SYSLOG_RELAX_DST: ${AMBER_SYSLOG_RELAX_DST:-1}
+
+  # Wave G — sip (tcp+udp 5060)
+  sip-collector:
+    ports:
+      - "127.0.0.1:${AMBER_SIP_HOST_PORT:-15060}:5060/tcp"
+      - "127.0.0.1:${AMBER_SIP_HOST_PORT:-15060}:5060/udp"
+    environment:
+      AMBER_SIP_RELAX_DST: ${AMBER_SIP_RELAX_DST:-1}
+
+  # Wave G — ldap (tcp 389)
+  ldap-collector:
+    ports:
+      - "127.0.0.1:${AMBER_LDAP_HOST_PORT:-1389}:389/tcp"
+    environment:
+      AMBER_LDAP_RELAX_DST: ${AMBER_LDAP_RELAX_DST:-1}
+
+  # Wave H — imap (tcp 143)
+  imap-collector:
+    ports:
+      - "127.0.0.1:${AMBER_IMAP_HOST_PORT:-1143}:143/tcp"
+    environment:
+      AMBER_IMAP_RELAX_DST: ${AMBER_IMAP_RELAX_DST:-1}
+
+  # Wave H — memcached (tcp+udp 11211)
+  memcached-collector:
+    ports:
+      - "127.0.0.1:${AMBER_MEMCACHED_HOST_PORT:-11211}:11211/tcp"
+      - "127.0.0.1:${AMBER_MEMCACHED_HOST_PORT:-11211}:11211/udp"
+    environment:
+      AMBER_MEMCACHED_RELAX_DST: ${AMBER_MEMCACHED_RELAX_DST:-1}
+
+  # Wave H — rdp (tcp 3389)
+  rdp-collector:
+    ports:
+      - "127.0.0.1:${AMBER_RDP_HOST_PORT:-13389}:3389/tcp"
+    environment:
+      AMBER_RDP_RELAX_DST: ${AMBER_RDP_RELAX_DST:-1}
+
+  # Wave H — vnc (tcp 5900)
+  vnc-collector:
+    ports:
+      - "127.0.0.1:${AMBER_VNC_HOST_PORT:-15900}:5900/tcp"
+    environment:
+      AMBER_VNC_RELAX_DST: ${AMBER_VNC_RELAX_DST:-1}
+
+  # Wave H — netbios (udp 137)
+  netbios-collector:
+    ports:
+      - "127.0.0.1:${AMBER_NETBIOS_HOST_PORT:-1137}:137/udp"
+    environment:
+      AMBER_NETBIOS_RELAX_DST: ${AMBER_NETBIOS_RELAX_DST:-1}

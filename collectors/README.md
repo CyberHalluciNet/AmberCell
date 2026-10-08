@@ -9,6 +9,17 @@ Protocol collectors capture traffic in the **cell network namespace** without op
 | `collectors/base/` | Shared Python library + base image (`ambercell-collector-base`) |
 | `collectors/ftp/` | FTP collector entrypoint (control + PASV data) |
 | `collectors/dns/` | DNS collector entrypoint (udp/tcp 53; parses tcpdump's native DNS decode — no payload dump) |
+| `collectors/tftp/` | TFTP collector (udp/69 RRQ/WRQ/ERROR decode) |
+| `collectors/snmp/` | SNMP collector (udp+tcp/161; -v PDU/reqid/OID decode) |
+| `collectors/ntp/` | NTP collector **(beta)** (udp/123; flows+state guaranteed; `ntp.packet` events need a tcpdump build that prints the NTP summary at this verbosity) |
+| `collectors/syslog/` | Syslog collector **(beta)** (tcp+udp/514; SYN-gated flows; `syslog.message` events from -A payload PRI lines when visible) |
+| `collectors/sip/` | SIP collector (tcp+udp/5060; -A payload, request/response/header parse) |
+| `collectors/imap/` | IMAP collector (tcp/143; -A LOGIN creds/commands/banner events) |
+| `collectors/memcached/` | memcached collector (tcp+udp/11211; -A text-command events) |
+| `collectors/rdp/` | RDP collector (tcp/3389; SYN-gated flows + `rdp.connect` events) |
+| `collectors/vnc/` | VNC collector (tcp/5900; `vnc.banner` RFB version events) |
+| `collectors/netbios/` | NetBIOS collector (udp/137; -x NBNS hex-decode: names/suffixes) |
+| `collectors/ldap/` | LDAP collector **(beta)** (tcp/389; SYN-gated flows; op events when the tcpdump build prints LDAP decode — Alpine's tcpdump does not, so flows+drill are the guarantee there) |
 
 Per-service collectors live under `collectors/<svc>/<svc>_collector/` and share the base library (emitters, pcap ring, flow tracking, FIFO log reader).
 

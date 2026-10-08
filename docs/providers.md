@@ -60,6 +60,31 @@ Own / alternate images are **supported** only when they meet all of the followin
 - Nested container engines or real kubelets (orchestration cells are **traps** only).
 - Replacing high-interaction daemons with generative fake shells as the primary path.
 
+Beta cells (ntp/syslog/ldap): protocol, drills, and raw flows are verified; event decode is
+best-effort (tcpdump-printer dependent on the current Alpine build).
+
+## Remote tunnel provider (`remote`)
+
+Every Wave F/G cell ships a `remote` provider: instead of a local daemon, an
+L4 `socat` relay forwards cell traffic to **your own existing server** — the
+backend address is freely configurable and does **not** need to be localhost:
+
+```bash
+export AMBER_LDAP_PROVIDER=remote
+export AMBER_LDAP_REMOTE_ADDR=ldap.corp.example:389   # any reachable host:port
+export AMBER_LDAP_REMOTE_TRANSPORT=tcp                 # tcp | udp | both (default both)
+./amberctl/amberctl up ldap
+```
+
+- The collector still captures all traffic at the cell front-end (pcap + raw
+  flows + events); the relay is L4 and never inspects or rewrites bytes.
+- The backend must be reachable from the cell network — add it to the
+  operator-managed remote-backend egress allowlist (`nftables/egress.nft`);
+  relays may not widen the general egress allowlist (**G14**).
+- UDP relays are per-datagram request/response: fine for SNMP/NTP/syslog/DNS;
+  **TFTP data channels negotiate new ports** and only the udp/69 control
+  channel is relayed — full TFTP transfers need a local daemon provider.
+
 ## Premade layout
 
 ```text
@@ -91,6 +116,17 @@ services/<svc>/providers/<name>/
 | kubelet | `trap` | `trap`, `trap-unauth`, `trap-exec` |
 | ollama | `mock` | `mock`, `ollama`, `localai` |
 | dns | `coredns` | `coredns`, `bind9`, `unbound` |
+| tftp | `dnsmasq` | `dnsmasq` (fixed transfer range 30050–30089), `tftpd-hpa`, `atftpd` (random transfer ports — NAT caveat), `remote` |
+| snmp | `snmpd` | `snmpd`, `snmpd-debian`, `remote` (both premade are net-snmp builds) |
+| ntp *(beta)* | `chrony` | `chrony`, `openntpd`, `ntp-classic`, `remote` |
+| syslog *(beta)* | `rsyslog` | `rsyslog`, `syslog-ng`, `remote` |
+| sip | `kamailio` | `kamailio`, `opensips`, `remote` |
+| ldap *(beta)* | `openldap` | `openldap` (slapd), `glauth`, `remote` |
+| imap | `dovecot` | `dovecot`, `remote` |
+| memcached | `memcached` | `memcached` (official image; empty answers only), `remote` |
+| rdp | `xrdp` | `xrdp`, `remote` |
+| vnc | `tigervnc` | `tigervnc` (Xvnc), `remote` |
+| netbios | `nmbd` | `nmbd` (samba), `remote` |
 
 Architecture notes and ports: [`DESIGN.md`](DESIGN.md) §5–6 (local draft; may be gitignored).
 Wizard menus list only providers that currently ship a `Dockerfile`.

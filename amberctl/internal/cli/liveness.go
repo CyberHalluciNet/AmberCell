@@ -32,10 +32,10 @@ func runLiveness(args []string) error {
 		switch a {
 		case "--once":
 			once = true
-		case "ftp", "telnet", "smtp", "pop3", "ssh", "redis", "mqtt", "http", "mysql", "postgres", "smb", "mongo", "elastic", "dockerapi", "kubelet", "ollama", "dns":
+		case "ftp", "telnet", "smtp", "pop3", "ssh", "redis", "mqtt", "http", "mysql", "postgres", "smb", "mongo", "elastic", "dockerapi", "kubelet", "ollama", "dns", "tftp", "snmp", "ntp", "syslog", "sip", "ldap", "imap", "memcached", "rdp", "vnc", "netbios":
 			svcs = []string{a}
 		case "-h", "--help":
-			fmt.Fprintln(os.Stderr, "usage: amberctl liveness [--once] [ftp|telnet|smtp|pop3|dns]")
+			fmt.Fprintln(os.Stderr, "usage: amberctl liveness [--once] [svc]")
 			return nil
 		}
 	}
@@ -108,6 +108,40 @@ func probeOnce(t probeTarget) (bool, string) {
 	// DNS is UDP: send a lure-zone A query and expect a NOERROR response.
 	if t.Svc == "dns" {
 		detail, err := dnsUDPProbe(t.Host, t.Port)
+		if err != nil {
+			return false, err.Error()
+		}
+		return true, detail
+	}
+	// Wave G request-response probes (UDP/TCP per protocol).
+	switch t.Svc {
+	case "tftp", "snmp", "ntp", "sip", "ldap", "syslog", "imap", "memcached", "rdp", "vnc", "netbios":
+		var detail string
+		var err error
+		switch t.Svc {
+		case "tftp":
+			detail, err = probeTFTP(t.Host, t.Port)
+		case "snmp":
+			detail, err = probeSNMP(t.Host, t.Port)
+		case "ntp":
+			detail, err = probeNTP(t.Host, t.Port)
+		case "sip":
+			detail, err = probeSIP(t.Host, t.Port)
+		case "ldap":
+			detail, err = probeLDAP(t.Host, t.Port)
+		case "syslog":
+			detail, err = probeSyslog(t.Host, t.Port)
+		case "imap":
+			detail, err = probeIMAP(t.Host, t.Port)
+		case "memcached":
+			detail, err = probeMemcached(t.Host, t.Port)
+		case "rdp":
+			detail, err = probeRDP(t.Host, t.Port)
+		case "vnc":
+			detail, err = probeVNC(t.Host, t.Port)
+		case "netbios":
+			detail, err = probeNetbios(t.Host, t.Port)
+		}
 		if err != nil {
 			return false, err.Error()
 		}

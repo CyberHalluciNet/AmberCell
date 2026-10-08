@@ -27,7 +27,7 @@ const (
 	fsmIdle        fsmState = "idle"
 	fsmPending     fsmState = "pending"
 	fsmExecuting   fsmState = "executing"
-	fsmCooldown   fsmState = "cooldown"
+	fsmCooldown    fsmState = "cooldown"
 	fsmQuarantined fsmState = "quarantined"
 )
 

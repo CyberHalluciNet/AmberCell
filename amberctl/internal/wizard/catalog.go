@@ -111,6 +111,58 @@ var Catalog = []CellOption{
 		{ID: "bind9", Desc: "ISC BIND9"},
 		{ID: "unbound", Desc: "Unbound"},
 	}},
+	{Svc: "imap", Providers: []ProviderOption{
+		{ID: "dovecot", Desc: "Dovecot IMAP (default)"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_IMAP_REMOTE_ADDR)"},
+	}},
+	{Svc: "memcached", Providers: []ProviderOption{
+		{ID: "memcached", Desc: "memcached (default; empty NOT_FOUND answers)"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_MEMCACHED_REMOTE_ADDR)"},
+	}},
+	{Svc: "rdp", Providers: []ProviderOption{
+		{ID: "xrdp", Desc: "xrdp (default; negotiation/TLS surface)"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_RDP_REMOTE_ADDR)"},
+	}},
+	{Svc: "vnc", Providers: []ProviderOption{
+		{ID: "tigervnc", Desc: "TigerVNC Xvnc (default)"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_VNC_REMOTE_ADDR)"},
+	}},
+	{Svc: "netbios", Providers: []ProviderOption{
+		{ID: "nmbd", Desc: "samba nmbd (default)"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_NETBIOS_REMOTE_ADDR)"},
+	}},
+	{Svc: "tftp", Providers: []ProviderOption{
+		{ID: "dnsmasq", Desc: "dnsmasq TFTP (default; fixed transfer range)"},
+		{ID: "tftpd-hpa", Desc: "tftpd-hpa"},
+		{ID: "atftpd", Desc: "atftpd"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_TFTP_REMOTE_ADDR)"},
+	}},
+	{Svc: "snmp", Providers: []ProviderOption{
+		{ID: "snmpd", Desc: "net-snmp snmpd (default, alpine)"},
+		{ID: "snmpd-debian", Desc: "net-snmp snmpd (debian)"},
+		{ID: "remote", Desc: "Relay to own agent (AMBER_SNMP_REMOTE_ADDR)"},
+	}},
+	{Svc: "ntp", Providers: []ProviderOption{
+		{ID: "chrony", Desc: "chrony (default NTP)"},
+		{ID: "openntpd", Desc: "OpenNTPD"},
+		{ID: "ntp-classic", Desc: "ntp.org classic"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_NTP_REMOTE_ADDR)"},
+	}},
+	{Svc: "syslog", Providers: []ProviderOption{
+		{ID: "rsyslog", Desc: "rsyslog (default)"},
+		{ID: "syslog-ng", Desc: "syslog-ng"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_SYSLOG_REMOTE_ADDR)"},
+	}},
+	{Svc: "sip", Providers: []ProviderOption{
+		{ID: "kamailio", Desc: "Kamailio (default SIP)"},
+		{ID: "opensips", Desc: "OpenSIPS"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_SIP_REMOTE_ADDR)"},
+	}},
+	{Svc: "ldap", Providers: []ProviderOption{
+		{ID: "openldap", Desc: "OpenLDAP slapd (default)"},
+		{ID: "glauth", Desc: "GLAuth"},
+		{ID: "remote", Desc: "Relay to own server (AMBER_LDAP_REMOTE_ADDR)"},
+	}},
 }
 
 // AvailableProviders returns premade providers that have a Dockerfile under root.

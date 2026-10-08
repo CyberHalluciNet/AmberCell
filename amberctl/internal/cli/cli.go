@@ -68,7 +68,7 @@ func Run(args []string) error {
 }
 
 func printUsage(w *os.File) {
-	const cells = "ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns"
+	const cells = "ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns|tftp|snmp|ntp|syslog|sip|ldap|imap|memcached|rdp|vnc|netbios"
 	fmt.Fprintf(w, `amberctl — AmberCell operator CLI (Stages 1–7)
 
 Usage:
@@ -115,6 +115,17 @@ Environment:
   AMBER_REDIS_HOST_PORT   lab Redis (default 6379)
   AMBER_MQTT_HOST_PORT    lab MQTT (default 1883)
   AMBER_DNS_HOST_PORT     lab DNS (default 1053; udp+tcp)
+  AMBER_TFTP_HOST_PORT    lab TFTP (default 1069/udp)
+  AMBER_SNMP_HOST_PORT    lab SNMP (default 1161/udp+tcp)
+  AMBER_NTP_HOST_PORT     lab NTP (default 1123/udp)
+  AMBER_SYSLOG_HOST_PORT  lab Syslog (default 1514/tcp+udp)
+  AMBER_SIP_HOST_PORT     lab SIP (default 15060/tcp+udp)
+  AMBER_LDAP_HOST_PORT    lab LDAP (default 1389/tcp)
+  AMBER_IMAP_HOST_PORT    lab IMAP (default 1143/tcp)
+  AMBER_MEMCACHED_HOST_PORT lab memcached (default 11211/tcp+udp)
+  AMBER_RDP_HOST_PORT     lab RDP (default 13389/tcp)
+  AMBER_VNC_HOST_PORT     lab VNC (default 15900/tcp)
+  AMBER_NETBIOS_HOST_PORT lab NetBIOS (default 1137/udp)
 
 `)
 }

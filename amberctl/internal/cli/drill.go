@@ -14,7 +14,7 @@ import (
 
 func runDrill(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: amberctl drill ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns")
+		return fmt.Errorf("usage: amberctl drill ftp|telnet|smtp|pop3|ssh|redis|mqtt|http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama|dns|tftp|snmp|ntp|syslog|sip|ldap|imap|memcached|rdp|vnc|netbios")
 	}
 	switch args[0] {
 	case "ftp":
@@ -51,6 +51,28 @@ func runDrill(args []string) error {
 		return drillOllama()
 	case "dns":
 		return drillDNS()
+	case "tftp":
+		return drillTFTP()
+	case "snmp":
+		return drillSNMP()
+	case "ntp":
+		return drillNTP()
+	case "syslog":
+		return drillSyslog()
+	case "sip":
+		return drillSIP()
+	case "ldap":
+		return drillLDAP()
+	case "imap":
+		return drillIMAP()
+	case "memcached":
+		return drillMemcached()
+	case "rdp":
+		return drillRDP()
+	case "vnc":
+		return drillVNC()
+	case "netbios":
+		return drillNetbios()
 	default:
 		return fmt.Errorf("drill: unsupported service %q", args[0])
 	}

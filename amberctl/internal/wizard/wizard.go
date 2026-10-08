@@ -15,11 +15,11 @@ import (
 
 // Options controls the textual init wizard.
 type Options struct {
-	Root      string   // compose repo root
-	Cells     []string // empty → prompt; non-empty → limit to these
-	In        io.Reader
-	Out       io.Writer
-	Err       io.Writer
+	Root       string   // compose repo root
+	Cells      []string // empty → prompt; non-empty → limit to these
+	In         io.Reader
+	Out        io.Writer
+	Err        io.Writer
 	ForceStdin bool // --wizard: require readable stdin even if non-TTY
 }
 

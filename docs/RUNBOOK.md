@@ -34,11 +34,20 @@ Darwin lab **does not** satisfy G1–G11 (`tests/test_stage4_verify.sh` reports 
 - Wave D/E (Stage-7): `export COMPOSE_PROFILES=lab,wave-d,wave-e` then `amberctl up dockerapi|kubelet|ollama`
   - Trap cells (**G4/G8**): dockerapi/kubelet are HTTP mocks only — no host engine socket, no real cluster.
   - Lab ports: Docker API `${AMBER_DOCKERAPI_HOST_PORT:-2375}`, kubelet `10250`, Ollama mock `11434`.
+- Wave G (Stage-9): `export COMPOSE_PROFILES=lab,core,wave-g` then `amberctl up tftp|snmp|ntp|syslog|sip|ldap`
+  - Real daemons only (no mocks): tftpd-hpa/dnsmasq/atftpd, net-snmp snmpd (udp+tcp 161), kamailio/opensips (tcp+udp 5060), and **beta** cells — ntp (chrony/openntpd/ntp-classic), syslog (rsyslog/syslog-ng), ldap (OpenLDAP slapd/glauth): drills + raw flows verified, event decode best-effort on this tcpdump build.
+  - Lab ports: TFTP `1069/udp`, SNMP `1161/udp+tcp`, NTP `1123/udp`, Syslog `1514/tcp+udp`, SIP `15060/tcp+udp`, LDAP `1389/tcp`.
+  - Remote tunnel (own server at any address): `AMBER_<SVC>_PROVIDER=remote` + `AMBER_<SVC>_REMOTE_ADDR=host:port` (see providers.md § remote).
+  - Wave H (Stage-10): `export COMPOSE_PROFILES=lab,core,wave-h` then `amberctl up imap|memcached|rdp|vnc|netbios`
+    - Real daemons: dovecot IMAP (weak lure creds), memcached (official image, empty), xrdp (negotiation/TLS surface, no sesman), TigerVNC Xvnc (open-VNC persona, SecurityTypes None), samba nmbd (FILESRV01/BACKUP01/PRINT01 names).
+    - Lab ports: IMAP `1143`, memcached `11211/tcp+udp`, RDP `13389`, VNC `15900`, NetBIOS `1137/udp`.
+    - RDP evidence = negotiation/probes (credentials are inside TLS by design); memcached answers reflection probes ~1× (G13 family).
+  - TFTP lab note: dnsmasq (default) uses fixed transfer range 30050–30089 (published in lab); `amberctl drill tftp` expects the reply — on Docker Desktop/Darwin the cross-port UDP return is dropped by vpnkit (smoke asserts the full transfer in-netns instead). Linux labs/production conntrack handle it natively.
 - Wave F (post-Submit): `export COMPOSE_PROFILES=lab,core,wave-f` then `amberctl up dns`
   - Lab DNS: `127.0.0.1:${AMBER_DNS_HOST_PORT:-1053}` (udp+tcp); authoritative-only — no recursion (**G13**).
   - Providers: coredns (default) / bind9 / unbound; own image via `AMBER_DNS_HI_IMAGE` / `AMBER_DNS_PROVIDER_CONTEXT` ([providers.md](providers.md)).
 - Drill: `amberctl drill …` includes `http|mysql|postgres|smb|mongo|elastic|dockerapi|kubelet|ollama`; `amberctl drill dns` sends a lure-zone UDP query (NOERROR expected).
-- Smoke: `AMBER_FTP_HOST_PORT=2121 ./tests/test_smoke_ftp.sh`; mail: `./tests/test_smoke_mail.sh`; Wave A: `./tests/test_smoke_wave_a.sh`; Wave B+C: `./tests/test_smoke_wave_bc.sh`; Wave D+E: `./tests/test_smoke_wave_de.sh`; Wave F: `./tests/test_smoke_wave_f.sh` · G4/G8 static: `./tests/test_g4_g8_wave_d.sh` (`AMBER_SMOKE_SKIP_ELASTIC=1` if RAM constrained)
+- Smoke: `AMBER_FTP_HOST_PORT=2121 ./tests/test_smoke_ftp.sh`; mail: `./tests/test_smoke_mail.sh`; Wave A: `./tests/test_smoke_wave_a.sh`; Wave B+C: `./tests/test_smoke_wave_bc.sh`; Wave D+E: `./tests/test_smoke_wave_de.sh`; Wave F: `./tests/test_smoke_wave_f.sh`; Wave G: `./tests/test_smoke_wave_g.sh`; Wave H: `./tests/test_smoke_wave_h.sh` · G4/G8 static: `./tests/test_g4_g8_wave_d.sh` (`AMBER_SMOKE_SKIP_ELASTIC=1` if RAM constrained)
 - Liveness (optional): `amberctl liveness --once` or long-running `amberctl liveness`
 - Drift: `amberctl status --drift` (compose/nft/seed/policy hashes + per-cell provider/digest)
 - Replay CI: `./tests/test_stage3_ci.sh` · Stage-4: `./tests/test_stage4_ci.sh`

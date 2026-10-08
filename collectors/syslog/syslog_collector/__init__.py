@@ -1,0 +1,1 @@
+"""syslog cell collector package."""

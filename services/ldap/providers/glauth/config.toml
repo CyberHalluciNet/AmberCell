@@ -1,0 +1,27 @@
+# AmberCell LDAP honeypot — GLAuth with static lure personas.
+[ldap]
+enabled = true
+listen = "0.0.0.0:389"
+
+[ldaps]
+enabled = false
+
+[backend]
+datastore = "config"
+baseDN = "dc=ambercell,dc=lab"
+
+[[users]]
+name = "jdoe"
+uidnumber = 5001
+primarygroup = 5501
+passsha256 = "b64b7ba06fd4f0a9d4de1b526509e7b0c6e78a6a1a0a3b21b9d07e0e8b1e2a7f" # "jdoe123"
+
+[[users]]
+name = "hr"
+uidnumber = 5002
+primarygroup = 5501
+passsha256 = "b64b7ba06fd4f0a9d4d1b526509e7b0c6e78a6a1a0a3b21b9d07e0e8b1e2a7f"
+
+[[groups]]
+name = "people"
+gidnumber = 5501

@@ -33,6 +33,8 @@ func runStatusDrift() error {
 		"ftp", "telnet", "smtp", "pop3", "ssh", "redis", "mqtt",
 		"http", "mysql", "postgres", "smb", "mongo", "elastic",
 		"dockerapi", "kubelet", "ollama", "dns",
+		"tftp", "snmp", "ntp", "syslog", "sip", "ldap",
+		"imap", "memcached", "rdp", "vnc", "netbios",
 	} {
 		if err := driftOne(svc, root); err != nil {
 			fmt.Fprintf(os.Stderr, "drift %s: %v\n", svc, err)
