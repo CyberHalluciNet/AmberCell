@@ -12,7 +12,7 @@ AMBERCTL="${ROOT}/amberctl/amberctl"
 
 EVID="$(mktemp -d)"
 export AMBER_EVIDENCE_ROOT="$EVID"
-"$AMBERCTL" init >/dev/null
+"$AMBERCTL" init --yes >/dev/null  # --yes: CI has no TTY; wizard would EOF-fail
 
 mkdir -p "$EVID/decisions/ftp" "$EVID/enrichment/ftp" "$EVID/raw-flows/ftp" "$EVID/jsonl/ftp"
 echo '{"schema_version":"decision.v1","decision_id":"dec_ci1","decision_type":"alert","confidence":"low"}' \

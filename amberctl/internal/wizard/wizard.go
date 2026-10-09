@@ -519,13 +519,21 @@ func parseInt(s string) (int, error) {
 	return n, nil
 }
 
-// IsTTY reports whether stdin is a character device (no x/term dependency).
+// IsTTY reports whether stdin looks interactive (no x/term dependency).
+// /dev/null is a character device but not a terminal: headless callers
+// (CI runners, systemd units) wire stdin to it, so exclude it explicitly.
 func IsTTY() bool {
 	fi, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}
-	return fi.Mode()&os.ModeCharDevice != 0
+	if fi.Mode()&os.ModeCharDevice == 0 {
+		return false
+	}
+	if nullFi, err := os.Stat(os.DevNull); err == nil && os.SameFile(fi, nullFi) {
+		return false
+	}
+	return true
 }
 
 // NonInteractive reports --yes / AMBER_INIT_NONINTERACTIVE=1 style skip.
