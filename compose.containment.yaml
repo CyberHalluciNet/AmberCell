@@ -12,30 +12,25 @@
 services:
   ftp-hi:
     security_opt:
-      - no-new-privileges:true
       - seccomp:${AMBER_ROOT:-.}/seccomp/ftp.json
       - apparmor:ambercell-ftp-hi
 
   telnet-hi:
     security_opt:
-      - no-new-privileges:true
       - seccomp:${AMBER_ROOT:-.}/seccomp/telnet.json
       - apparmor:ambercell-telnet-hi
 
   ssh-hi:
     security_opt:
-      - no-new-privileges:true
       - seccomp:${AMBER_ROOT:-.}/seccomp/ssh.json
       - apparmor:ambercell-ssh-hi
 
   redis-hi:
     security_opt:
-      - no-new-privileges:true
       - seccomp:${AMBER_ROOT:-.}/seccomp/redis.json
       - apparmor:ambercell-redis-hi
 
   smb-hi:
     security_opt:
-      - no-new-privileges:true
       - seccomp:${AMBER_ROOT:-.}/seccomp/smb.json
       - apparmor:ambercell-smb-hi
