@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AmberCell — the high-interaction honeypot with real services</title>
+<meta name="description" content="AmberCell is a high-interaction honeypot: it runs full, real open-source services (never emulated) in sealed cells behind nftables, records every packet, and ships intelligence out through a one-way dead drop.">
+<meta property="og:title" content="AmberCell — high-interaction honeypot, sealed in amber">
+<meta property="og:description" content="Full real services. 28 protocol cells. 8 waves. Zero emulation.">
+<link rel="icon" href="https://ascii.rest/svg/donut.dark.svg">
+<script type="module" src="https://ascii.rest/ascii.js"></script>
+<style>
+/* ── tokens ─────────────────────────────────────────────────────── */
+:root{
+  --bg:#0e0b07; --bg2:#151009; --bg3:#1c150c;
+  --amber:#ffb000; --amber-dim:#b87d10; --amber-faint:#4a3512;
+  --text:#e8dcc8; --muted:#8a7d6a;
+  --ok:#3fbf6f; --alert:#e0533d; --cyan:#58c4dd;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font:400 15px/1.75 var(--mono);background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;align-items:center}
+main{width:100%;max-width:80ch;padding:0 1.25rem}
+a{color:var(--amber);text-decoration:none}
+a:hover{text-decoration:underline}
+::selection{background:var(--amber);color:var(--bg)}
+h1,h2,h3{font-weight:700;color:var(--amber);line-height:1.3}
+section{scroll-margin-top:5.2rem}
+h2{font-size:1.05rem;margin:0 0 .9rem;letter-spacing:.06em}
+h2 .n{color:var(--amber-dim)}
+p{margin:.4rem 0 .9rem}
+.ascii-art{font-size:9px;color:var(--amber-dim)}
+code{font-family:var(--mono)}
+kbd{border:1px solid var(--amber-faint);border-bottom-width:3px;border-radius:3px;
+  padding:0 .35em;font-size:.85em;color:var(--amber)}
+.dim{color:var(--muted)}
+.ok{color:var(--ok)} .bad{color:var(--alert)} .beta{color:var(--amber-dim)}
+.c{color:var(--amber)}
+hr{border:0;border-top:1px dashed var(--amber-faint);margin:2.6rem 0}
+.hl{color:var(--amber);font-weight:700}
+
+/* ── header ─────────────────────────────────────────────────────── */
+header{position:sticky;top:0;z-index:50;width:100%;background:rgba(14,11,7,.93);
+  backdrop-filter:blur(6px);border-bottom:1px solid var(--amber-faint)}
+.nav{max-width:90ch;margin:0 auto;padding:.65rem 1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:nowrap}
+.nav-l{display:flex;align-items:center;gap:1rem;flex-wrap:nowrap;min-width:0}
+.brand{color:var(--amber);font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.brand .dot{color:var(--alert)}
+.nav a.plain{color:var(--muted);font-size:.84rem;white-space:nowrap}
+.nav a.plain:hover{color:var(--amber);text-decoration:none}
+.nav .gh{margin-left:auto;white-space:nowrap}
+
+/* ── hero ───────────────────────────────────────────────────────── */
+.hero{display:grid;grid-template-columns:1.25fr .8fr;gap:2rem;align-items:center;padding:3rem 0 1.4rem}
+.wordmark{color:var(--amber-dim);font-size:.85rem;letter-spacing:.05em;margin-top:.4rem}
+.tag{font-size:1.04rem;color:var(--text);max-width:46ch;margin:1rem 0 1.4rem}
+.tag b{color:var(--amber)}
+.ctas{display:flex;gap:.9rem;flex-wrap:wrap}
+.btn{display:inline-block;border:1px solid var(--amber);color:var(--amber);
+  padding:.5rem 1.1rem;font-size:.92rem;cursor:pointer;background:transparent;font-family:var(--mono)}
+.btn:hover{background:var(--amber);color:var(--bg);text-decoration:none}
+.btn.ghost{border-color:var(--amber-faint);color:var(--muted)}
+.btn.ghost:hover{border-color:var(--amber);color:var(--amber);background:transparent}
+.heropanel{border:1px solid var(--amber-faint);background:var(--bg2);padding:.8rem .9rem}
+.heropanel .cap{font-size:.75rem;color:var(--muted);letter-spacing:.12em;margin-bottom:.4rem}
+.heropanel ascii-art{font-size:8.5px;color:var(--amber)}
+.heropanel .clockrow{display:flex;align-items:center;gap:.9rem;margin-top:.5rem;
+  border-top:1px dashed var(--amber-faint);padding-top:.5rem;flex-wrap:wrap}
+.heropanel .clockrow ascii-art{font-size:6px;color:var(--amber-dim)}
+.heropanel .clockrow .clbl{font-size:.72rem;color:var(--muted)}
+
+/* ── typewriter strip ───────────────────────────────────────────── */
+.strip{border-top:1px solid var(--amber-faint);border-bottom:1px solid var(--amber-faint);
+  padding:.8rem 0;margin:1.8rem 0;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.strip ascii-art{font-size:10px;color:var(--amber);flex:1;min-width:280px}
+.strip .fn{font-size:.78rem;color:var(--muted)}
+
+/* ── lanes / grids ──────────────────────────────────────────────── */
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;margin:1.6rem 0}
+.lanes3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.2rem;margin:1.6rem 0}
+.lane{border:1px solid var(--amber-faint);background:var(--bg2);padding:1.1rem 1.2rem}
+.lane h3{margin:0 0 .6rem;font-size:.8rem;letter-spacing:.14em}
+.lane p{font-size:.9rem;margin:.35rem 0}
+.lane ul{margin:.4rem 0 0;padding-left:1.1rem;font-size:.88rem}
+.lane li{margin:.3rem 0}
+.lane.plain h3{color:var(--cyan)} .lane.ops h3{color:var(--amber)}
+.lane.low h3{color:var(--muted)} .lane.med h3{color:var(--amber-dim)}
+.lane.hi{border-color:var(--amber)}
+.lane.hi h3{color:var(--amber)}
+.lane.hi .badge{color:var(--bg);background:var(--amber);padding:.05em .45em;font-size:.72rem;letter-spacing:.1em}
+.ways .lane{display:flex;flex-direction:column}
+.ways .lane .way-no{font-size:.72rem;color:var(--amber-dim);letter-spacing:.18em}
+.ways .lane code{color:var(--cyan);font-size:.82rem;word-break:break-all}
+
+/* ── services table ─────────────────────────────────────────────── */
+.celltables{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin:1.2rem 0 .7rem}
+.celltables .tblwrap{overflow-x:auto;min-width:0}
+.celltables table{width:100%;border-collapse:collapse;font-size:.76rem;table-layout:fixed}
+.celltables th:nth-child(1),.celltables td:nth-child(1){width:22%}
+.celltables th:nth-child(2),.celltables td:nth-child(2){width:15.5%}
+.celltables th:nth-child(3),.celltables td:nth-child(3){width:18%}
+.celltables th:nth-child(4),.celltables td:nth-child(4){width:31%}
+.celltables th:nth-child(5),.celltables td:nth-child(5){width:13.5%}
+.celltables th{text-align:left;color:var(--muted);font-weight:400;font-size:.68rem;letter-spacing:.06em;
+  border-bottom:1px solid var(--amber-faint);padding:.15rem .18rem .35rem}
+.celltables td{padding:.26rem .18rem;border-bottom:1px dashed #241a0e;white-space:nowrap}
+.celltables td:first-child{color:var(--amber)}
+.celltables td:nth-child(2),.celltables td:nth-child(3){color:var(--muted)}
+.celltables .st-real{color:var(--ok)}
+.celltables .st-beta{color:var(--amber-dim)}
+.celltables .st-trap{color:var(--alert)}
+.celltables .st-mock{color:var(--cyan)}
+
+/* ── how / topology ─────────────────────────────────────────────── */
+.steps3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.4rem;margin:1.4rem 0}
+.step{border:1px solid var(--amber-faint);background:var(--bg2);padding:1rem 1.1rem}
+.step .num{color:var(--amber-dim);font-size:.75rem;letter-spacing:.15em}
+.step h3{margin:.2rem 0 .5rem;font-size:.95rem}
+.step p{font-size:.88rem;color:var(--muted);margin:0}
+pre.topo{border:1px solid var(--amber-faint);background:var(--bg2);padding:1rem;
+  overflow-x:auto;font-size:11.5px;line-height:1.5;color:var(--text);margin:0}
+pre.topo .a{color:var(--amber)} pre.topo .g{color:var(--ok)} pre.topo .d{color:var(--muted)}
+
+/* ── tutorials ──────────────────────────────────────────────────── */
+.tutgrid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;margin:1.4rem 0}
+.tut{border:1px solid var(--amber-faint);background:var(--bg2);padding:1rem 1.1rem;cursor:pointer;
+  transition:border-color .15s, transform .15s;position:relative}
+.tut:hover{border-color:var(--amber);transform:translateY(-2px)}
+.tut .tid{color:var(--amber-dim);font-size:.72rem;letter-spacing:.15em}
+.tut h3{margin:.25rem 0 .5rem;font-size:.95rem;color:var(--amber)}
+.tut p{font-size:.85rem;color:var(--muted);margin:0 0 .6rem}
+.tut .open{color:var(--amber);font-size:.8rem}
+.tut .meta{position:absolute;top:.9rem;right:1rem;color:var(--amber-dim);font-size:.68rem;text-align:right}
+
+/* ── chn callout ────────────────────────────────────────────────── */
+.chn{border:1px solid var(--amber);background:linear-gradient(180deg,var(--bg2),var(--bg3));
+  padding:1.6rem 1.8rem;margin:2.4rem 0;display:flex;gap:2rem;align-items:center;flex-wrap:wrap}
+.chn .chn-main{flex:1;min-width:280px}
+.chn h3{margin:0 0 .4rem;font-size:1rem;letter-spacing:.04em}
+.chn p{font-size:.9rem;color:var(--muted);margin:0}
+.chn .btn{font-size:.95rem;padding:.65rem 1.4rem}
+
+/* ── safety ─────────────────────────────────────────────────────── */
+.bars{display:grid;grid-template-columns:1fr 1fr;gap:.15rem 2rem;font-size:.82rem;margin:.6rem 0 0}
+.bars div{color:var(--muted)} .bars b{color:var(--ok);font-weight:400}
+.safety{display:flex;gap:1.2rem;flex-wrap:wrap;margin:1.2rem 0;padding:1rem;border:1px solid #1d3a28;background:#0b120d}
+.safety span{color:var(--ok);font-size:.88rem}
+
+/* ── footer ─────────────────────────────────────────────────────── */
+footer{width:100%;border-top:1px solid var(--amber-faint);margin-top:3rem;
+  display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:1.6rem 1rem 2.4rem}
+footer .flinks{display:flex;gap:1.6rem;font-size:.85rem;flex-wrap:wrap;justify-content:center}
+footer .fine{color:var(--muted);font-size:.75rem;text-align:center;max-width:70ch}
+footer ascii-art{font-size:8px;color:var(--amber-dim)}
+
+/* ── modal ──────────────────────────────────────────────────────── */
+.mb{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  padding:1.2rem;background:rgba(5,4,2,.72);backdrop-filter:blur(5px);
+  opacity:0;pointer-events:none;transition:opacity .22s}
+.mb.on{opacity:1;pointer-events:auto}
+.modal{width:min(76ch,96vw);max-height:86vh;display:flex;flex-direction:column;
+  background:var(--bg2);border:1px solid var(--amber);box-shadow:0 0 0 1px #000,0 0 60px rgba(255,176,0,.14);
+  position:relative;overflow:hidden;
+  animation:crtIn .34s cubic-bezier(.2,.9,.25,1.2) both}
+@keyframes crtIn{
+  0%{transform:scale(1,.006);filter:brightness(4) saturate(0)}
+  55%{transform:scale(1.015,1.02);filter:brightness(1.7)}
+  100%{transform:scale(1);filter:none}
+}
+.modal::after{content:"";position:absolute;left:0;right:0;top:-8%;height:7%;pointer-events:none;
+  background:linear-gradient(to bottom,transparent,rgba(255,176,0,.10),transparent);
+  animation:sweep .9s .15s ease-out both}
+@keyframes sweep{from{top:-8%}to{top:110%}}
+.mtitle{display:flex;align-items:center;gap:.8rem;padding:.5rem .9rem;
+  border-bottom:1px solid var(--amber-faint);background:var(--bg3);font-size:.85rem}
+.mtitle .dots{color:var(--amber-dim);letter-spacing:.25em;font-size:.7rem}
+.mtitle .t{color:var(--amber);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mtitle .ctr{color:var(--muted);font-size:.7rem;white-space:nowrap}
+.mnav{display:flex;gap:.35rem}
+.mnav button{background:none;border:1px solid var(--amber-faint);color:var(--muted);
+  font-family:var(--mono);font-size:.75rem;padding:.15rem .55rem;cursor:pointer}
+.mnav button:hover{border-color:var(--amber);color:var(--amber)}
+.mnav button:disabled{opacity:.3;cursor:default}
+.mprog{display:flex;align-items:center;gap:.8rem;padding:.4rem .9rem;
+  border-bottom:1px solid var(--amber-faint);background:var(--bg3)}
+.mprog .segs{display:flex;gap:.3rem;flex-shrink:0}
+.mprog .seg{width:1.7em;height:.42em;border:1px solid var(--amber-faint);
+  transition:background .3s,border-color .3s}
+.mprog .seg.on{background:var(--amber);border-color:var(--amber)}
+.mprog .plabel{color:var(--muted);font-size:.72rem;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.mbody{padding:1rem 1.2rem .6rem;overflow-y:auto;font-size:.9rem}
+.mdesc{color:var(--muted);margin:0 0 .4rem;border-left:2px solid var(--amber-dim);padding-left:.8rem}
+.mmeta{color:var(--cyan);font-size:.75rem;margin:0 0 1rem;padding-left:.95rem}
+.tl{margin:0 0 .55rem;opacity:0;transform:translateY(4px);animation:lineIn .22s both}
+@keyframes lineIn{to{opacity:1;transform:none}}
+.tl.lab{color:var(--amber-dim);font-size:.72rem;letter-spacing:.14em;margin-top:.9rem;margin-bottom:.25rem}
+.tl.lab::before{content:"── "}
+.tl .pfx{color:var(--amber-dim);user-select:none}
+.tl.cmd{cursor:pointer}
+.tl.cmd:hover .body{background:var(--amber-faint)}
+.tl .body{display:inline;padding:.06em .25em;border-radius:2px}
+.tl.cmd .copy{float:right;color:var(--muted);font-size:.68rem;opacity:0;transition:opacity .12s}
+.tl.cmd:hover .copy{opacity:1}
+.tl.out{color:var(--muted)}
+.tl.hint{color:var(--cyan);font-size:.84rem}
+.tl.hint::before{content:"✦ ";color:var(--amber)}
+.cursor{display:inline-block;width:.55em;height:1.05em;background:var(--amber);
+  vertical-align:text-bottom;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.mfoot{padding:.45rem .9rem;border-top:1px solid var(--amber-faint);background:var(--bg3);
+  color:var(--muted);font-size:.72rem;display:flex;gap:1.2rem;flex-wrap:wrap}
+.mfoot .navhint{margin-left:auto}
+
+/* ── figlet banners ─────────────────────────────────────────────── */
+.banner{margin:0 0 .5rem;color:var(--amber-dim);white-space:pre;overflow-x:auto;
+  font-size:9px;line-height:1.1;font-family:var(--mono);
+  opacity:0;transform:translateY(8px)}
+.banner.vis{opacity:1;transform:none;transition:opacity .8s ease,transform .8s ease,color .5s ease}
+section:hover .banner,.chn:hover .banner{color:var(--amber)}
+
+/* ── live pieces ────────────────────────────────────────────────── */
+.rainband{border-top:1px solid var(--amber-faint);border-bottom:1px solid var(--amber-faint);.rainband{border-top:1px solid var(--amber-faint);border-bottom:1px solid var(--amber-faint);
+  margin:1.6rem 0;max-height:96px;overflow:hidden}
+.rainband ascii-art{font-size:5px;opacity:.85;width:100%}
+.telem{display:grid;grid-template-columns:1fr;gap:1rem;margin:1.6rem 0}
+.telem .tpane{border:1px solid var(--amber-faint);background:var(--bg2);padding:.6rem .7rem;min-width:0}
+.telem .tcap{font-size:.7rem;color:var(--muted);letter-spacing:.12em;margin-bottom:.35rem}
+.telem ascii-art{font-size:5px;color:var(--amber);max-width:100%}
+.spiderrow{display:flex;align-items:center;gap:1.6rem;margin:1.4rem 0;border:1px dashed var(--amber-faint);
+  padding:.8rem 1.1rem;background:var(--bg2);flex-wrap:wrap}
+.spiderrow ascii-art{font-size:6px;color:var(--amber-dim);flex-shrink:0}
+.spiderrow .sl{flex:1;min-width:200px;font-size:.82rem;color:var(--muted)}
+.spiderrow .sl.r{text-align:right}
+.spiderrow .sl.l{text-align:left}
+.decode{margin:.9rem 0;border-left:2px solid var(--amber-dim);padding:.15rem 0 .15rem 1rem}
+.decode ascii-art{font-size:8px;color:var(--amber)}
+.glitchrow{display:flex;align-items:center;gap:1.2rem;margin:1rem 0 .2rem;flex-wrap:wrap}
+.glitchrow ascii-art{font-size:6px;color:var(--amber);flex-shrink:0}
+.glitchrow .glbl{font-size:.78rem;color:var(--muted)}
+.wavehello{margin:.6rem 0 .2rem}
+.wavehello ascii-art{font-size:8px;color:var(--amber)}
+.howlive{display:flex;gap:1.2rem;align-items:stretch;margin:1.2rem 0;flex-wrap:wrap}
+.howlive .wpane{border:1px solid var(--amber-faint);background:var(--bg2);padding:.5rem .8rem;flex:1;min-width:220px}
+.howlive .wcap{font-size:.7rem;color:var(--muted);letter-spacing:.12em;margin-bottom:.3rem}
+.howlive ascii-art{font-size:5px;color:var(--amber)}
+.chn .chn-art{border:1px dashed var(--amber-faint);background:var(--bg2);padding:.4rem .6rem;flex-shrink:0}
+.chn .chn-art ascii-art{font-size:5px;color:var(--amber-dim)}
+
+/* ── alive touches ──────────────────────────────────────────────── */
+@keyframes breathe{0%,100%{box-shadow:0 0 0 rgba(255,176,0,0)}50%{box-shadow:0 0 16px rgba(255,176,0,.20)}}
+.lane.hi{animation:breathe 3.4s ease-in-out infinite}
+.brand .dot{display:inline-block;animation:dotpulse 1.6s ease-in-out infinite}
+@keyframes dotpulse{0%,100%{opacity:1}50%{opacity:.2}}
+.btn{transition:background .15s,color .15s,box-shadow .15s}
+.btn:not(.ghost):hover{box-shadow:0 0 18px rgba(255,176,0,.38)}
+
+/* ── responsive / motion / print ────────────────────────────────── */
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;padding-top:2.2rem}
+  .heropanel{display:none}
+  .lanes,.tutgrid,.steps3,.bars,.lanes3,.telem,.celltables{grid-template-columns:1fr}
+  .rainband{display:none}
+  .chn{flex-direction:column;align-items:flex-start}
+}
+@media (max-width:700px){
+  .nav-l a.plain{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .tl{opacity:1;transform:none}
+  .mb{opacity:1}
+  .banner{opacity:1;transform:none}
+}
+@media print{body{background:#fff;color:#000}.mb,header,footer{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="nav">
+    <div class="nav-l">
+      <span class="brand"><span class="dot">●</span> ambercell</span>
+      <a class="plain" href="#interaction">why high-interaction</a>
+      <a class="plain" href="#cells">cells</a>
+      <a class="plain" href="#ways">customize</a>
+      <a class="plain" href="#tutorials">tutorials</a>
+    </div>
+    <a class="plain gh" href="https://cyberhallucinet.org/" target="_blank" rel="noopener">[ part of CHN ↗ ]</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ═══ hero ═══ -->
+<section class="hero">
+  <div>
+    <ascii-art piece="big-text" options='{"text":"AMBERCELL"}' label="AmberCell" aria-hidden="true" style="font-size:8px;color:var(--amber)"></ascii-art>
+    <div class="wordmark">／／ high-interaction honeypot · real services · zero emulation</div>
+    <p class="tag">AmberCell is a <b>high-interaction honeypot</b>: it runs <b>full, real
+      services</b> — actual postfix, OpenLDAP, xrdp, kamailio — not emulated look-alikes.
+      Attackers interact with genuine daemons on a genuine network stack, and every packet,
+      credential, and payload is preserved, <b>sealed in amber</b>.</p>
+    <div class="ctas">
+      <button class="btn" data-tut="t1">&gt; run_the_lab_demo_</button>
+      <button class="btn ghost" data-tour="1">▶ guided tour · 5 tutorials</button>
+    </div>
+  </div>
+  <div class="heropanel">
+    <div class="cap">／ CELL BOOT SEQUENCE ／</div>
+    <ascii-art piece="boot-log" label="Animated boot log of real AmberCell services starting"></ascii-art>
+    <div class="clockrow">
+      <ascii-art piece="digital-clock" options='{"hour12":false,"seconds":true,"date":false}' label="Live UTC clock — the cells never sleep"></ascii-art>
+      <span class="clbl">utc —<br>the cells never sleep</span>
+    </div>
+  </div>
+</section>
+
+<div class="strip">
+  <ascii-art piece="typewriter" options='{"prefix":"> ","phrases":["28 protocols.","70+ real daemons.","zero emulation."]}' label="28 protocols, 70 plus real daemons, zero emulation" aria-hidden="true"></ascii-art>
+  <span class="fn">high-interaction means the services are real — <a href="#interaction">why that matters ↓</a></span>
+</div>
+
+<div class="rainband" aria-hidden="true">
+  <ascii-art piece="matrix-rain" mono label="Falling glyph streams, like the background noise a decoy hides in"></ascii-art>
+</div>
+
+<!-- ═══ story ═══ -->
+<section id="story">
+  <pre class="banner" aria-hidden="true">██████  ███████  ██████  ██████  ██    ██
+██   ██ ██      ██      ██    ██  ██  ██
+██   ██ █████   ██      ██    ██   ████
+██   ██ ██      ██      ██    ██    ██
+██████  ███████  ██████  ██████     ██</pre>
+  <h2><span class="n">01 /</span> WHAT IS A HONEYPOT — IN TWO DIALECTS</h2>
+  <div class="lanes">
+    <div class="lane plain">
+      <h3>IN PLAIN TERMS</h3>
+      <p>AmberCell is a <b style="color:var(--cyan)">decoy computer</b> that looks like a real
+        office network: mail servers, file shares, databases, even a remote-desktop login.</p>
+      <p>The difference from a movie prop: everything on it <b style="color:var(--cyan)">actually
+        works</b>. Attackers who break in get real software to interact with — and every move is
+        recorded, like insects preserved in amber.</p>
+      <p>Nothing of <b style="color:var(--cyan)">yours</b> is ever exposed, and the evidence
+        leaves through a one-way letterbox.</p>
+    </div>
+    <div class="lane ops">
+      <h3>FOR SECURITY PROFESSIONALS</h3>
+      <ul>
+        <li><span class="hl">High-interaction</span> by architecture: real OSS daemons in per-protocol
+          cells — no fake shells, no scripted responses</li>
+        <li>Single-host <b>Docker Compose</b> (Ubuntu 22.04 / Debian 12), host <b>nftables</b> ingress/egress</li>
+        <li>Collector-owned netns capture: <b>pcap + raw flows + JSONL</b> events, append-only</li>
+        <li>ATT&amp;CK/Engage enrichment; bounded AI manager off the packet path with a deterministic critic</li>
+        <li>Kill bars <b>G1–G14</b> gate production exposure</li>
+        <li>One-way <b>dead drop</b> — SIEM and analysts pull, they never touch the pot</li>
+      </ul>
+    </div>
+  </div>
+  <div class="spiderrow">
+    <span class="sl r">meanwhile, in the web — an attacker who touches a cell is
+      <b style="color:var(--amber)">stuck in it</b>:</span>
+    <ascii-art piece="spider" mono label="A spider descending its web — attackers that touch a cell are stuck in it" aria-hidden="true"></ascii-art>
+    <span class="sl l">no real data, no next hop, no way out. Every struggle is
+      another frame of evidence, preserved.</span>
+  </div>
+</section>
+
+<!-- ═══ interaction levels ═══ -->
+<section id="interaction">
+  <pre class="banner" aria-hidden="true">______ _____  ___   _
+| ___ \  ___|/ _ \ | |
+| |_/ / |__ / /_\ \| |
+|    /|  __||  _  || |
+| |\ \| |___| | | || |____
+\_| \_\____/\_| |_/\_____/</pre>
+  <h2><span class="n">02 /</span> WHY HIGH-INTERACTION MATTERS</h2>
+  <p class="dim">Honeypots are classed by how much of the service is real. AmberCell sits at the deep end —
+    deliberately.</p>
+  <div class="decode" aria-label="Interaction levels compared: low emulated banners, medium scripted shells, high real daemons">
+    <ascii-art piece="scramble" options='{"phrases":["low:    emulated banners (honeyd)","medium: scripted shells (cowrie)","high:   REAL daemons (ambercell)"]}' label="Interaction levels decoding: low, medium, then high with real daemons"></ascii-art>
+  </div>
+  <div class="lanes3">
+    <div class="lane low">
+      <h3>LOW-INTERACTION</h3>
+      <p>Emulated protocol banners and handshakes only (honeyd-style). Cheap and safe, but an
+        attacker fingerprinting the fake walks away in seconds — you learn almost nothing about
+        what they <i>intended to do</i>.</p>
+    </div>
+    <div class="lane med">
+      <h3>MEDIUM-INTERACTION</h3>
+      <p>Scripted emulation: fake shells and canned responses (cowrie-style). Better lures, still
+        detectable — behaviour never quite matches a real system, and sophisticated tooling
+        notices the seams.</p>
+    </div>
+    <div class="lane hi">
+      <h3>HIGH-INTERACTION <span class="badge">AMBERCELL</span></h3>
+      <p><b style="color:var(--amber)">Full, real services.</b> Attackers exploit, authenticate,
+        upload and interact with genuine daemons on a real network stack — the deepest, most
+        truthful evidence you can collect. AmberCell makes that <b style="color:var(--amber)">safe
+        to operate</b>: every real daemon is sealed in its own cell with tight caps, seccomp and
+        egress allowlists.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ cells ═══ -->
+<section id="cells">
+  <pre class="banner" aria-hidden="true">   ______________    __   _____
+  / ____/ ____/ /   / /  / ___/
+ / /   / __/ / /   / /   \__ \
+/ /___/ /___/ /___/ /______/ /
+\____/_____/_____/_____/____/</pre>
+  <h2><span class="n">03 /</span> 28 high-interaction protocol decoys</h2>
+
+  <div class="celltables">
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th>protocol</th><th>port</th><th>proto</th><th>software</th><th>status</th></tr></thead>
+      <tbody>
+        <tr><td>ftp</td><td>21</td><td>tcp</td><td>vsftpd</td><td class="st-real">real</td></tr>
+        <tr><td>ssh</td><td>22</td><td>tcp</td><td>openssh</td><td class="st-real">real</td></tr>
+        <tr><td>telnet</td><td>23</td><td>tcp</td><td>busybox</td><td class="st-real">real</td></tr>
+        <tr><td>smtp</td><td>25</td><td>tcp</td><td>postfix</td><td class="st-real">real</td></tr>
+        <tr><td>dns</td><td>53</td><td>udp+tcp</td><td>coredns</td><td class="st-real">real</td></tr>
+        <tr><td>tftp</td><td>69</td><td>udp</td><td>dnsmasq</td><td class="st-real">real</td></tr>
+        <tr><td>http</td><td>80/443</td><td>tcp</td><td>nginx</td><td class="st-real">real</td></tr>
+        <tr><td>pop3</td><td>110</td><td>tcp</td><td>dovecot</td><td class="st-real">real</td></tr>
+        <tr><td>ntp</td><td>123</td><td>udp</td><td>chrony</td><td class="st-beta">beta</td></tr>
+        <tr><td>netbios</td><td>137</td><td>udp</td><td>nmbd</td><td class="st-real">real</td></tr>
+        <tr><td>imap</td><td>143</td><td>tcp</td><td>dovecot</td><td class="st-real">real</td></tr>
+        <tr><td>snmp</td><td>161</td><td>udp+tcp</td><td>net-snmp</td><td class="st-real">real</td></tr>
+        <tr><td>ldap</td><td>389</td><td>tcp</td><td>openldap</td><td class="st-beta">beta</td></tr>
+        <tr><td>smb</td><td>445</td><td>tcp</td><td>samba</td><td class="st-real">real</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="tblwrap">
+    <table>
+      <thead><tr><th>protocol</th><th>port</th><th>proto</th><th>software</th><th>status</th></tr></thead>
+      <tbody>
+        <tr><td>syslog</td><td>514</td><td>tcp+udp</td><td>rsyslog</td><td class="st-beta">beta</td></tr>
+        <tr><td>mqtt</td><td>1883</td><td>tcp</td><td>mosquitto</td><td class="st-real">real</td></tr>
+        <tr><td>dockerapi</td><td>2375</td><td>tcp</td><td>mocked api</td><td class="st-trap">trap</td></tr>
+        <tr><td>mysql</td><td>3306</td><td>tcp</td><td>mariadb</td><td class="st-real">real</td></tr>
+        <tr><td>rdp</td><td>3389</td><td>tcp</td><td>xrdp</td><td class="st-real">real</td></tr>
+        <tr><td>sip</td><td>5060</td><td>tcp</td><td>kamailio</td><td class="st-real">real</td></tr>
+        <tr><td>postgres</td><td>5432</td><td>tcp</td><td>postgresql</td><td class="st-real">real</td></tr>
+        <tr><td>vnc</td><td>5900</td><td>tcp</td><td>tigervnc</td><td class="st-real">real</td></tr>
+        <tr><td>redis</td><td>6379</td><td>tcp</td><td>redis</td><td class="st-real">real</td></tr>
+        <tr><td>elastic</td><td>9200</td><td>tcp</td><td>elasticsearch</td><td class="st-real">real</td></tr>
+        <tr><td>kubelet</td><td>10250</td><td>tcp</td><td>mocked api</td><td class="st-trap">trap</td></tr>
+        <tr><td>memcached</td><td>11211</td><td>tcp</td><td>memcached</td><td class="st-real">real</td></tr>
+        <tr><td>ollama</td><td>11434</td><td>tcp</td><td>llm lure</td><td class="st-mock">mock</td></tr>
+        <tr><td>mongo</td><td>27017</td><td>tcp</td><td>mongodb</td><td class="st-real">real</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="telem" aria-label="Live-style telemetry: packet rate sparkline">
+    <div class="tpane">
+      <div class="tcap">／ FLOWS — packets per second, live</div>
+      <ascii-art piece="sparkline" mono options='{"series":[{"label":"flows/s","unit":"pps"},{"label":"events/s","unit":"ev"}],"rate":2}' label="Sparkline of flows and events per second"></ascii-art>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ways ═══ -->
+<section id="ways">
+  <pre class="banner" aria-hidden="true"> **    **   *******   **     ** *******     **       **     **     **    **
+//**  **   **/////** /**    /**/**////**   /**      /**    ****   //**  **
+ //****   **     //**/**    /**/**   /**   /**   *  /**   **//**   //****
+  //**   /**      /**/**    /**/*******    /**  *** /**  **  //**   //**
+   /**   /**      /**/**    /**/**///**    /** **/**/** **********   /**
+   /**   //**     ** /**    /**/**  //**   /**** //****/**//////**   /**
+   /**    //*******  //******* /**   //**  /**/   ///**/**     /**   /**
+   //      ///////    ///////  //     //   //       // //      //    //</pre>
+  <h2><span class="n">04 /</span> YOUR DECOY, YOUR WAY — READY OR HOMEMADE</h2>
+  <div class="glitchrow">
+    <ascii-art piece="glitch" options='{"text":"REAL ONLY"}' label="Pixel-font word REAL ONLY that glitches in bursts" aria-hidden="true"></ascii-art>
+    <span class="glbl">whatever you plug in — curated, homemade, or remote — the evidence pipeline stays identical</span>
+  </div>
+  <p class="dim">Every protocol cell speaks the same contract. Run a curated real daemon, bring your own,
+    or tunnel to the servers you already operate — <b>the collectors and evidence never change</b>.</p>
+  <div class="lanes3 ways">
+    <div class="lane">
+      <span class="way-no">WAY 1</span>
+      <h3>CURATED REAL DAEMONS</h3>
+      <p>70+ digest-pinned open-source servers ship as one-env-var swaps:
+        <code>AMBER_FTP_PROVIDER=proftpd</code>, <code>AMBER_SMTP_PROVIDER=exim</code>,
+        <code>AMBER_LDAP_PROVIDER=glauth</code>… Each keeps the same evidence schema, so
+        switching never breaks your pipeline.</p>
+      <button class="btn ghost" data-tut="t2" style="margin-top:auto;align-self:flex-start">→ tutorial 02</button>
+    </div>
+    <div class="lane">
+      <span class="way-no">WAY 2</span>
+      <h3>BRING YOUR OWN DOCKER</h3>
+      <p>Already built the perfect lure? Point a cell at your image:
+        <code>AMBER_FTP_HI_IMAGE=registry…@sha256:…</code> (prebuilt) or
+        <code>AMBER_FTP_PROVIDER_CONTEXT=/path/to/your/Dockerfile</code>. Containment and
+        capture wrap around whatever you bring.</p>
+      <button class="btn ghost" data-tut="t2" style="margin-top:auto;align-self:flex-start">→ tutorial 02</button>
+    </div>
+    <div class="lane">
+      <span class="way-no">WAY 3</span>
+      <h3>TUNNEL TO YOUR OWN SERVER</h3>
+      <p>Have real services already? Relay a cell to them at any address:
+        <code>AMBER_LDAP_PROVIDER=remote</code> +
+        <code>AMBER_LDAP_REMOTE_ADDR=ldap.corp:389</code>. It's an L4 relay — bytes untouched,
+        evidence still captured at the cell front.</p>
+      <button class="btn ghost" data-tut="t3" style="margin-top:auto;align-self:flex-start">→ tutorial 03</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ how ═══ -->
+<section id="how">
+  <pre class="banner" aria-hidden="true"> __  __     ______     __     __
+/\ \_\ \   /\  __ \   /\ \  _ \ \
+\ \  __ \  \ \ \/\ \  \ \ \/ &quot;.\ \
+ \ \_\ \_\  \ \_____\  \ \__/&quot;.~\_\
+  \/_/\/_/   \/_____/   \/_/   \/_/</pre>
+  <h2><span class="n">05 /</span> HOW IT WORKS</h2>
+  <div class="steps3">
+    <div class="step"><div class="num">STEP 1</div><h3>DECOY</h3>
+      <p>Real OSS daemons run in sealed cells behind nftables DNAT — a convincing, high-interaction network.</p></div>
+    <div class="step"><div class="num">STEP 2</div><h3>RECORD</h3>
+      <p>Per-cell collectors own the netns: rotating pcap, raw flows, credentials, uploads — append-only.</p></div>
+    <div class="step"><div class="num">STEP 3</div><h3>EXAMINE</h3>
+      <p>ATT&amp;CK/Engage enrichment + bounded AI decisions; intelligence leaves via a one-way dead drop.</p></div>
+  </div>
+
+  <pre class="topo" aria-label="AmberCell topology diagram">
+<span class="d">              ┌─────────────────────────── the sealed case ───────────────────────────┐</span>
+ internet ───▶│ nftables DNAT ──▶ ambernet (icc off) ──▶ <span class="a">28 real-service cells</span>           │
+              │      │                     │                    │                        │
+              │      ▼                     ▼                    ▼                        │
+              │ egress allowlist      dns sinkhole      <span class="a">*-collector</span> ──▶ /var/ambercell │
+              │ (tcp 80/443 only,     (all lookups           │        pcap · flows · JSONL  │
+              │  tcp/25 dropped)       logged)                ▼                            │
+              │                                          <span class="g">dead drop</span> ◀ one-way letterbox   │
+              └──────────────────────────────────────────────────────────────────────────┘
+                                                SIEM / analysts pull — never touch the pot</pre>
+
+  <div class="howlive" aria-label="Live-style piece: the dead-drop beacon">
+    <div class="wpane">
+      <div class="wcap">／ BEACON — the dead-drop publish cycle</div>
+      <ascii-art piece="lighthouse" mono label="Lighthouse beam sweeping: evidence flashing out, one way" aria-hidden="true"></ascii-art>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ tutorials ═══ -->
+<section id="tutorials">
+  <pre class="banner" aria-hidden="true">dP         88888888b  .d888888   888888ba  888888ba
+88         88        d8&#x27;    88   88    `8b 88    `8b
+88        a88aaaa    88aaaaa88a a88aaaa8P&#x27; 88     88
+88         88        88     88   88   `8b. 88     88
+88         88        88     88   88     88 88     88
+88888888P  88888888P 88     88   dP     dP dP     dP</pre>
+  <h2><span class="n">06 /</span> TUTORIALS — interactive, copy-ready, real</h2>
+  <div class="wavehello" aria-hidden="true">
+    <ascii-art piece="wave-text" options='{"text":"learn by doing_","amp":1.25,"speed":6}' label="Waving text: learn by doing"></ascii-art>
+  </div>
+  <p class="dim">Every command is verified against the repo. Sessions run in an animated terminal —
+    lines type themselves in, and every <span class="c">$</span> line copies on click.
+    <button class="btn ghost" data-tour="1" style="padding:.15rem .7rem;font-size:.8rem">▶ start guided tour</button></p>
+  <div class="tutgrid">
+    <div class="tut" data-tut="t1" tabindex="0" role="button">
+      <span class="meta">~3 min<br>beginner</span>
+      <div class="tid">TUT·01</div><h3>First flight — your first real honeypot</h3>
+      <p>Clone, build amberctl, boot a real vsftpd cell, probe it, and watch your first evidence land. No public IP needed.</p>
+      <span class="open">&gt; open_session_</span></div>
+    <div class="tut" data-tut="t2" tabindex="0" role="button">
+      <span class="meta">~2 min<br>beginner</span>
+      <div class="tid">TUT·02</div><h3>Swap the decoy — providers &amp; your own Docker</h3>
+      <p>Switch vsftpd→proftpd with one variable, then bring a custom image. Evidence schema never changes; digests stay pinned.</p>
+      <span class="open">&gt; open_session_</span></div>
+    <div class="tut" data-tut="t3" tabindex="0" role="button">
+      <span class="meta">~2 min<br>intermediate</span>
+      <div class="tid">TUT·03</div><h3>Point a cell at YOUR server</h3>
+      <p>Relay attackers into your existing LDAP/SNMP/SIP server at any address — the cell keeps capturing at the front.</p>
+      <span class="open">&gt; open_session_</span></div>
+    <div class="tut" data-tut="t4" tabindex="0" role="button">
+      <span class="meta">~2 min<br>analyst</span>
+      <div class="tid">TUT·04</div><h3>Take the intel — the dead drop</h3>
+      <p>Publish an evidence bundle, verify it hash-by-hash, and pull it exactly like your SIEM would.</p>
+      <span class="open">&gt; open_session_</span></div>
+    <div class="tut" data-tut="t5" tabindex="0" role="button">
+      <span class="meta">~4 min<br>operator</span>
+      <div class="tid">TUT·05</div><h3>Deploy sensors — a remote fleet</h3>
+      <p>Headless provisioning, systemd watchdog + publish timer, and a central launcher for many sensors.</p>
+      <span class="open">&gt; open_session_</span></div>
+  </div>
+</section>
+
+<!-- ═══ safety ═══ -->
+<section id="safety">
+  <pre class="banner" aria-hidden="true"> ▄████▄   ▒█████   ███▄    █ ▄▄▄█████▓ ▄▄▄       ██▓ ███▄    █ ▓█████ ▓█████▄
+▒██▀ ▀█  ▒██▒  ██▒ ██ ▀█   █ ▓  ██▒ ▓▒▒████▄    ▓██▒ ██ ▀█   █ ▓█   ▀ ▒██▀ ██▌
+▒▓█    ▄ ▒██░  ██▒▓██  ▀█ ██▒▒ ▓██░ ▒░▒██  ▀█▄  ▒██▒▓██  ▀█ ██▒▒███   ░██   █▌
+▒▓▓▄ ▄██▒▒██   ██░▓██▒  ▐▌██▒░ ▓██▓ ░ ░██▄▄▄▄██ ░██░▓██▒  ▐▌██▒▒▓█  ▄ ░▓█▄   ▌
+▒ ▓███▀ ░░ ████▓▒░▒██░   ▓██░  ▒██▒ ░  ▓█   ▓██▒░██░▒██░   ▓██░░▒████▒░▒████▓
+░ ░▒ ▒  ░░ ▒░▒░▒░ ░ ▒░   ▒ ▒   ▒ ░░    ▒▒   ▓▒█░░▓  ░ ▒░   ▒ ▒ ░░ ▒░ ░ ▒▒▓  ▒
+  ░  ▒     ░ ▒ ▒░ ░ ░░   ░ ▒░    ░      ▒   ▒▒ ░ ▒ ░░ ░░   ▒▒░ ░ ░  ░ ░ ▒  ▒
+░        ░ ░ ░ ▒     ░   ░ ░   ░        ░   ▒    ▒ ░   ░   ░ ░    ░    ░ ░  ░
+░ ░          ░ ░           ░                ░  ░ ░           ░    ░  ░   ░
+░                                                                      ░</pre>
+  <h2><span class="n">07 /</span> SAFETY — real services, hard limits</h2>
+  <p class="dim">High-interaction means real risk if done naively. AmberCell's answer is layered containment —
+    production exposure is gated by kill bars, and if any trips, you don't ship.</p>
+  <div class="safety">
+    <span>[✓] lab profile is the default</span>
+    <span>[✓] no host orchestration, ever</span>
+    <span>[✓] egress allowlist + dns sinkhole</span>
+    <span>[✓] append-only evidence</span>
+    <span>[✓] one-way dead drop</span>
+  </div>
+  <div class="bars">
+    <div><b>[✓] G1</b> no unexplained egress</div>
+    <div><b>[✓] G2</b> no lateral container reach</div>
+    <div><b>[✓] G3</b> no host/metadata access</div>
+    <div><b>[✓] G4</b> no docker.sock anywhere</div>
+    <div><b>[✓] G5</b> unknown traffic never dropped</div>
+    <div><b>[✓] G6</b> AI never mutates evidence</div>
+    <div><b>[✓] G8</b> traps can't orchestrate</div>
+    <div><b>[✓] G10</b> no outbound tcp/25</div>
+    <div><b>[✓] G13</b> no dns/memcached amplification</div>
+    <div><b>[✓] G14</b> relays can't widen egress</div>
+  </div>
+</section>
+
+<!-- ═══ CHN ═══ -->
+<section class="chn" id="chn">
+  <div class="chn-main">
+    <h3>● AMBERCELL × CHN — you found one piece of the network</h3>
+    <p>AmberCell runs perfectly as a standalone box — but it's part of
+      <b style="color:var(--amber)">Cyber Halluci Net (CHN)</b>, our security-research collective.
+      The perfect complete free deception suite.</p>
+  </div>
+  <div class="chn-art" aria-hidden="true">
+    <ascii-art piece="starfield" mono options='{"stars":70,"speed":1}' label="Starfield flying past — the wider CHN network"></ascii-art>
+  </div>
+  <a class="btn" href="https://cyberhallucinet.org/" target="_blank" rel="noopener">&gt; try CHN at cyberhallucinet.org_</a>
+</section>
+
+<hr>
+<p class="dim" style="text-align:center">ready in ~30 seconds on a laptop — no public IP required for the lab.</p>
+<p style="text-align:center"><button class="btn" data-tour="1">▶ take the guided tour</button></p>
+
+</main>
+
+<footer>
+  <ascii-art piece="owl" label="" aria-hidden="true"></ascii-art>
+  <div class="flinks">
+    <a href="https://cyberhallucinet.org/" target="_blank" rel="noopener">chn · cyberhallucinet.org</a>
+    <a href="https://github.com/CyberHalluciNet/AmberCell" target="_blank" rel="noopener">github</a>
+    <a href="https://github.com/CyberHalluciNet/AmberCell/blob/main/docs/RUNBOOK.md" target="_blank" rel="noopener">runbook</a>
+    <a href="https://github.com/CyberHalluciNet/AmberCell/blob/main/docs/DEADDROP.md" target="_blank" rel="noopener">dead drop guide</a>
+    <a href="https://github.com/CyberHalluciNet/AmberCell/blob/main/docs/providers.md" target="_blank" rel="noopener">providers</a>
+  </div>
+  <p class="fine">AmberCell is a defensive research tool — a high-interaction honeypot running real,
+    contained services. The owl watches. Nothing here attacks anyone; it only remembers who tried.
+    · AmberCell Public Source License · ascii art by ascii.rest (MIT)</p>
+</footer>
+
+<!-- ═══ modal ═══ -->
+<div class="mb" id="mb" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle-t">
+    <div class="mtitle">
+      <span class="dots">● ● ●</span>
+      <span class="t" id="mtitle-t">session</span>
+      <span class="ctr" id="mctr"></span>
+      <span class="mnav">
+        <button id="mprev" title="previous tutorial">← prev</button>
+        <button id="mnext" title="next tutorial">next →</button>
+        <button id="mclose">✕ esc</button>
+      </span>
+    </div>
+    <div class="mprog" id="mprog">
+      <span class="segs" id="msegs" aria-hidden="true"></span>
+      <span class="plabel" id="mplabel"></span>
+    </div>
+    <div class="mbody">
+      <p class="mdesc" id="mdesc"></p>
+      <p class="mmeta" id="mmeta"></p>
+      <div id="mlines"></div>
+    </div>
+    <div class="mfoot">
+      <span>click any <span class="c">$</span> line to copy</span>
+      <span><kbd>←</kbd> <kbd>→</kbd> switch tutorial</span>
+      <span class="navhint"><kbd>esc</kbd> or click backdrop to close</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── tutorials: verified commands from docs/RUNBOOK.md, DEADDROP.md, providers.md ── */
+const TUT_ORDER = ["t1","t2","t3","t4","t5"];
+const TUTS = {
+  t1: { title:"tut·01 — first flight: your first real honeypot", time:"~3 min", level:"beginner friendly",
+    desc:"Bring up a REAL vsftpd service in a sealed cell, on your laptop. No public IP, no nftables — the lab profile is containment-safe by default.",
+    lines:[
+    {k:"lab", t:"get the code"},
+    {k:"cmd", t:"git clone https://github.com/CyberHalluciNet/AmberCell.git && cd AmberCell"},
+    {k:"lab", t:"build the operator CLI (go, ~10s)"},
+    {k:"cmd", t:"cd amberctl && go build -o amberctl . && cd .."},
+    {k:"lab", t:"configure the lab profile — localhost only, safe by default"},
+    {k:"cmd", t:'export COMPOSE_PROFILES=lab,core AMBER_EVIDENCE_ROOT="${PWD}/.ambercell-lab" AMBER_FTP_PASV_ADDRESS=127.0.0.1 AMBER_FTP_HOST_PORT=2121'},
+    {k:"cmd", t:"./amberctl/amberctl init --yes"},
+    {k:"out", t:"initialized evidence tree under .ambercell-lab (mode 0750; prod owner root:amber)"},
+    {k:"hint",t:"init --yes is the scripts/CI mode. On a TTY, plain `amberctl init` opens an interactive provider wizard."},
+    {k:"lab", t:"boot the ftp cell — a real vsftpd, not an emulation"},
+    {k:"cmd", t:"./amberctl/amberctl up ftp"},
+    {k:"out", t:"amberctl: ftp provider=vsftpd context=services/ftp/providers/vsftpd"},
+    {k:"out", t:" Container ambercell-ftp-collector Started · ambercell-ftp-hi Started"},
+    {k:"hint",t:"That's the whole point of high-interaction: the attacker-facing service is genuine vsftpd."},
+    {k:"lab", t:"probe it like an attacker would — and like you will"},
+    {k:"cmd", t:"./amberctl/amberctl drill ftp"},
+    {k:"out", t:'amberctl: drill ftp OK (127.0.0.1:2121) banner="220 FTP server (vsftpd)"'},
+    {k:"lab", t:"check fleet state, then peek at the evidence"},
+    {k:"cmd", t:"./amberctl/amberctl status"},
+    {k:"cmd", t:"ls .ambercell-lab/raw-flows/ftp/ .ambercell-lab/pcap/ftp/ring/ | head"},
+    {k:"out", t:"flows.jsonl   capture.pcap …  ← append-only, from the very first packet"},
+    {k:"hint",t:"Full smoke: AMBER_FTP_HOST_PORT=2121 ./tests/test_smoke_ftp.sh · more waves: COMPOSE_PROFILES=lab,core,wave-h && amberctl up imap rdp vnc"},
+  ]},
+  t2: { title:"tut·02 — swap the decoy: providers & your own Docker", time:"~2 min", level:"beginner friendly",
+    desc:"One environment variable changes the real daemon behind a cell. Same collector, same evidence schema — nothing downstream breaks.",
+    lines:[
+    {k:"lab", t:"pick a different REAL daemon for ftp"},
+    {k:"cmd", t:"export AMBER_FTP_PROVIDER=proftpd   # or pure-ftpd"},
+    {k:"cmd", t:"./amberctl/amberctl up ftp"},
+    {k:"out", t:"amberctl: ftp provider=proftpd context=services/ftp/providers/proftpd"},
+    {k:"hint",t:"Works across cells: AMBER_SMTP_PROVIDER=postfix|exim|opensmtpd · AMBER_LDAP_PROVIDER=openldap|glauth · AMBER_SIP_PROVIDER=kamailio|opensips … 70+ curated providers total."},
+    {k:"lab", t:"bring your OWN docker image (way 2)"},
+    {k:"cmd", t:"export AMBER_FTP_PROVIDER=custom AMBER_FTP_HI_IMAGE=registry.example/amber-ftp@sha256:…"},
+    {k:"hint",t:"Precedence: HI_IMAGE (prebuilt, digest-pinned, skips the build) > PROVIDER_CONTEXT (your Dockerfile dir) > builtin provider."},
+    {k:"lab", t:"prove nothing drifted"},
+    {k:"cmd", t:"./amberctl/amberctl status --drift"},
+    {k:"out", t:"config_hash compose.yaml: 9f2c… · nftables/ingress.nft: 71bd… · per-cell provider/digest OK"},
+    {k:"hint",t:"Drift fails loudly if the live provider or any pinned config hash diverges from what you declared — fake-outs are a non-issue."},
+  ]},
+  t3: { title:"tut·03 — point a cell at YOUR own server", time:"~2 min", level:"intermediate",
+    desc:"The remote tunnel (way 3): a cell relays attacker traffic to your existing server — any address, not just localhost — while the collector keeps capturing at the front.",
+    lines:[
+    {k:"lab", t:"choose a cell and point it at your real LDAP"},
+    {k:"cmd", t:"export AMBER_LDAP_PROVIDER=remote"},
+    {k:"cmd", t:"export AMBER_LDAP_REMOTE_ADDR=ldap.corp.example:389"},
+    {k:"cmd", t:"./amberctl/amberctl up ldap"},
+    {k:"out", t:"amberctl: ldap provider=remote — relay to ldap.corp.example:389"},
+    {k:"hint",t:"It's an L4 socat relay: bytes are never inspected or rewritten, so your server sees genuine attacker traffic."},
+    {k:"lab", t:"tune the transport (optional)"},
+    {k:"cmd", t:"export AMBER_LDAP_REMOTE_TRANSPORT=tcp   # tcp | udp | both (default)"},
+    {k:"hint",t:"Available on every wave-f/g/h cell — dns, tftp, snmp, ntp, syslog, sip, imap, memcached, rdp, vnc, netbios…"},
+    {k:"hint",t:"G14 rule: the backend must be on your operator egress allowlist — a relay can never widen the cell's general egress."},
+    {k:"hint",t:"UDP relays are per-datagram (fine for SNMP/NTP/syslog). TFTP caveat: only the udp/69 control channel is relayed; data channels negotiate new ports."},
+  ]},
+  t4: { title:"tut·04 — take the intel: the dead drop", time:"~2 min", level:"analyst",
+    desc:"Consumers never log into the honeypot. Intelligence leaves through a one-way letterbox with a manifest you can verify hash-by-hash.",
+    lines:[
+    {k:"lab", t:"publish a bundle (summary class = redacted by default)"},
+    {k:"cmd", t:"./amberctl/amberctl publish"},
+    {k:"out", t:"published dead drop bundle: /var/ambercell/deaddrop/publish-summary-20261007T091500Z"},
+    {k:"lab", t:"verify integrity like a consumer would"},
+    {k:"cmd", t:"jq -r '.entries[] | \"\\(.sha256)  \\(.path)\"' manifest.json | sha256sum -c -"},
+    {k:"out", t:"raw-flows/ftp/…jsonl: OK · jsonl/ftp/…jsonl: OK · decisions/…: OK"},
+    {k:"hint",t:"Class summary redacts passwords, bodies and transcripts — 'password' fields become [redacted]. Full class and pcaps are explicit operator flags."},
+    {k:"lab", t:"mirror to S3 and pull like a SIEM"},
+    {k:"cmd", t:"export AMBER_DEADDROP_S3_URI=s3://amber-drops/prod-edge-01"},
+    {k:"cmd", t:"aws s3 sync s3://amber-drops/prod-edge-01/ ./drops/"},
+    {k:"hint",t:"Uploads are async and never block capture or rebuild. Consumers use their own read-only role — they never receive write keys, never touch the pot."},
+    {k:"hint",t:"Coming with the hardening wave: age encryption of every published file + a status.v1 fleet bulletin (uptime, first/last event timestamps, counters) for remote monitoring."},
+  ]},
+  t5: { title:"tut·05 — deploy sensors: a remote fleet", time:"~4 min", level:"operator",
+    desc:"A sensor is one AmberCell per host. Provisioning is headless and env-driven, so a central launcher can roll and watch many sensors.",
+    lines:[
+    {k:"lab", t:"provision a sensor from your fleet box (management network)"},
+    {k:"cmd", t:"ssh -p 22022 deploy@sensor-edge-01 'bash -s' <<'EOF'"},
+    {k:"cmd", t:"  cd /opt/AmberCell && git pull --ff-only"},
+    {k:"cmd", t:"  cd amberctl && go build -o /usr/local/bin/amberctl . && cd .."},
+    {k:"cmd", t:"  set -a; source /etc/ambercell/sensor.env; set +a   # pre-seeded per-sensor config"},
+    {k:"cmd", t:"  amberctl init --yes && amberctl up ftp telnet smtp pop3 && amberctl status --drift"},
+    {k:"cmd", t:"EOF"},
+    {k:"hint",t:"amberctl stays local-only — it's the containment executor. Remote systems launch and observe; the sensor's own FSM, flock and cooldown (exit 6) protect against races."},
+    {k:"lab", t:"keep it alive with systemd"},
+    {k:"cmd", t:"systemctl enable --now ambercell-liveness.service ambercell-publish.timer"},
+    {k:"out", t:"liveness: TCP+banner probes every 30s · 3 fails → snapshot_then_rebuild"},
+    {k:"out", t:"publish.timer: OnCalendar=*:0/10 (Persistent=true)"},
+    {k:"hint",t:"G9: admin SSH must NOT share attacker tcp/22 — keep it allowlisted on e.g. 22022 as above; the honeypot owns public 22."},
+    {k:"hint",t:"Each sensor gets its own dead-drop prefix; the drop (and the coming status bulletin) is your fleet dashboard. Full guide: docs/DEADDROP.md."},
+  ]},
+};
+
+/* ── modal engine ── */
+const mb=document.getElementById('mb'), mt=document.getElementById('mtitle-t'),
+      md=document.getElementById('mdesc'), mm=document.getElementById('mmeta'),
+      ml=document.getElementById('mlines'), mctr=document.getElementById('mctr'),
+      mclose=document.getElementById('mclose'),
+      mprev=document.getElementById('mprev'), mnext=document.getElementById('mnext'),
+      msegs=document.getElementById('msegs'), mplabel=document.getElementById('mplabel');
+let cur=null, lastFocus=null, progTimers=[];
+
+const REDUCED=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function setProg(n,total,label){
+  [...msegs.children].forEach((s,i)=>s.classList.toggle('on',i<=n));
+  mplabel.textContent='step '+(n+1)+'/'+total+(label?' — '+label:'');
+}
+
+function openTut(id){
+  const t=TUTS[id]; if(!t) return;
+  cur=id; lastFocus=document.activeElement;
+  const i=TUT_ORDER.indexOf(id);
+  mt.textContent=t.title;
+  mm.textContent='⏱ '+t.time+' · '+t.level;
+  mctr.textContent=(i+1)+'/'+TUT_ORDER.length;
+  mprev.disabled=(i<=0); mnext.disabled=(i>=TUT_ORDER.length-1);
+  md.textContent=t.desc;
+  ml.innerHTML='';
+  t.lines.forEach(l=>{
+    const d=document.createElement('div');
+    d.className='tl '+l.k;
+    if(l.k==='cmd'){
+      d.innerHTML='<span class="pfx">$ </span><span class="body"></span><span class="copy">[copy]</span>';
+      d.querySelector('.body').textContent=l.t;
+      d.addEventListener('click',()=>{
+        navigator.clipboard?.writeText(l.t);
+        const cp=d.querySelector('.copy'); cp.textContent='[copied ✓]';
+        setTimeout(()=>cp.textContent='[copy]',1400);
+      });
+      d.title='click to copy';
+    }else{
+      d.innerHTML='<span class="body"></span>';
+      d.querySelector('.body').textContent=l.t;
+    }
+    ml.appendChild(d);
+  });
+  /* staggered line animation + blinking cursor on the last line */
+  let delay=0.15;
+  ml.querySelectorAll('.tl').forEach(d=>{ d.style.animationDelay=delay.toFixed(2)+'s'; delay+=0.08; });
+  const csr=document.createElement('span'); csr.className='cursor';
+  ml.lastChild.querySelector('.body').appendChild(csr);
+  mb.querySelector('.mbody').scrollTop=0;
+
+  /* progress steps: one segment per lab step, advancing with the lines */
+  progTimers.forEach(clearTimeout); progTimers=[];
+  msegs.innerHTML=''; mplabel.textContent='';
+  const steps=[...ml.querySelectorAll('.tl.lab')];
+  steps.forEach(()=>{ const s=document.createElement('span'); s.className='seg'; msegs.appendChild(s); });
+  if(steps.length){
+    if(REDUCED()){
+      setProg(steps.length-1,steps.length,steps[steps.length-1].textContent);
+    }else{
+      steps.forEach((el,n)=>{
+        const at=(parseFloat(el.style.animationDelay)||0)*1000+230;
+        progTimers.push(setTimeout(()=>setProg(n,steps.length,el.textContent),at));
+      });
+    }
+  }
+
+  mb.classList.add('on'); mb.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+  mclose.focus();
+}
+function step(dir){
+  if(cur===null) return;
+  const i=TUT_ORDER.indexOf(cur), n=TUT_ORDER[i+dir];
+  if(n) openTut(n);
+}
+function closeTut(){
+  progTimers.forEach(clearTimeout); progTimers=[];
+  mb.classList.remove('on'); mb.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+  cur=null; if(lastFocus) lastFocus.focus();
+}
+document.querySelectorAll('[data-tut]').forEach(el=>{
+  el.addEventListener('click',()=>openTut(el.dataset.tut));
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openTut(el.dataset.tut);} });
+});
+document.querySelectorAll('[data-tour]').forEach(el=>el.addEventListener('click',()=>openTut('t1')));
+mclose.addEventListener('click',closeTut);
+mprev.addEventListener('click',()=>step(-1));
+mnext.addEventListener('click',()=>step(1));
+mb.addEventListener('click',e=>{ if(e.target===mb) closeTut(); });
+document.addEventListener('keydown',e=>{
+  if(!mb.classList.contains('on'))return;
+  if(e.key==='Escape')closeTut();
+  if(e.key==='ArrowRight')step(1);
+  if(e.key==='ArrowLeft')step(-1);
+});
+
+/* ── banner scroll-reveal ── */
+const banners=document.querySelectorAll('.banner');
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+  banners.forEach(b=>b.classList.add('vis'));
+}else{
+  const io=new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting){e.target.classList.add('vis');io.unobserve(e.target);}
+  }),{threshold:.15});
+  banners.forEach(b=>io.observe(b));
+}
+</script>
+</body>
+</html>

@@ -4,6 +4,9 @@ Single-host Docker Compose honeypot: protocol cells with pluggable real servers,
 
 **Status:** Stage-4 core Submit (SMTP, POP3, FTP, Telnet). See [`plan.md`](plan.md).
 
+**Site:** static landing in [`site/`](site/) — GitHub Pages
+<https://cyberhallucinet.github.io/AmberCell/>
+
 ## Quickstart (lab, `profile=core`, ~30s)
 
 ```bash
