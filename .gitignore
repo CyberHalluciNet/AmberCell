@@ -62,3 +62,6 @@ amberctl/amberctl.exe
 __pycache__/
 *.pyc
 .venv/
+
+# hermetic CI fixtures are content-pinned (expected/hashes.expected.json)
+!tests/pcap_ci/fixtures/*.pcap
