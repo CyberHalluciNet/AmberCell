@@ -1,6 +1,7 @@
 # AmberCell Production Host Ops Runbook
 
-**Status:** Stage-4 — core four (SMTP/POP3/FTP/Telnet) operator path.  
+**Status:** Current production host runbook for the shipped core cells plus
+Waves A-H.
 Narrative companion: [`../docs/RUNBOOK.md`](../docs/RUNBOOK.md). Normative design: [`../docs/DESIGN.md`](../docs/DESIGN.md).
 
 ## Support matrix

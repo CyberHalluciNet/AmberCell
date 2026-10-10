@@ -1,6 +1,7 @@
 # AmberCell Runbook
 
-**Status:** Stage-7 — core four + Waves A–E lab paths; production host ops in [`../ops/RUNBOOK.md`](../ops/RUNBOOK.md).  
+**Status:** Current operator runbook for the shipped core cells plus Waves A-H;
+production host ops live in [`../ops/RUNBOOK.md`](../ops/RUNBOOK.md).
 Darwin lab **does not** satisfy G1–G11 (`tests/test_stage4_verify.sh` reports SKIP).
 
 ## Install (lab)

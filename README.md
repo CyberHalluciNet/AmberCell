@@ -2,7 +2,10 @@
 
 Single-host Docker Compose honeypot: protocol cells with pluggable real servers, collector-owned capture, host nftables containment, JSONL + pcap evidence, ATT&CK/Engage enrichment, a bounded AI manager, and Go CLI `amberctl`.
 
-**Status:** Stage-4 core Submit (SMTP, POP3, FTP, Telnet). See [`plan.md`](plan.md).
+**Status:** Current tree includes the core cells plus Waves A-H, provider
+selection, dead-drop publish/export, and the bounded `amberctl` operator path.
+See [`CHANGELOG.md`](CHANGELOG.md) for shipped deltas and [`plan.md`](plan.md)
+for local planning detail.
 
 **Site:** static landing in [`site/`](site/) — GitHub Pages
 <https://cyberhallucinet.github.io/AmberCell/>
@@ -64,7 +67,7 @@ CI: `./tests/test_stage3_ci.sh` · Stage-4 lab: `./tests/test_stage4_ci.sh` · P
 
 **Darwin / laptop lab does not satisfy G1–G11.** `test_stage4_verify.sh` reports SKIP for production bars and runs the lab subset only.
 
-## amberctl surface (Stage-4)
+## amberctl surface
 
 `init [--yes|--wizard] [--cells …]` · `up` · `down` · `status [--drift]` · `logs` · `export` · `publish` · `drill` · `replay [--diff]` · `reset` · `rebuild` · `ai decisions|approve|review` · `critic` · `liveness` · `execute-decision`
 
@@ -81,8 +84,9 @@ Requires Docker 24+ and Compose v2. Production: [`ops/RUNBOOK.md`](ops/RUNBOOK.m
 
 ## Docs
 
-- [`plan.md`](plan.md) — normative stage plan and tracked todos
-- [`docs/DESIGN.md`](docs/DESIGN.md) — architecture (Status: Draft)
+- [`CHANGELOG.md`](CHANGELOG.md) — shipped changes and release-facing deltas
+- [`plan.md`](plan.md) — local planning detail and tracked todos
+- [`docs/DESIGN.md`](docs/DESIGN.md) — architecture
 - [`docs/providers.md`](docs/providers.md) — provider_contract.v1 + own Docker
 - [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) — adversary model
 - [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — operator guide

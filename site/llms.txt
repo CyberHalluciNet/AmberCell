@@ -1,0 +1,29 @@
+# AmberCell
+
+> High-interaction honeypot: real open-source daemons in sealed cells, packet-level evidence, one-way dead drop. Zero emulation.
+
+AmberCell is a single-host deception system for security research and defensive operations. It runs genuine network services (not scripted banners) inside per-protocol cells behind host nftables, records pcap / flows / JSONL via collectors, and publishes intelligence through a one-way dead drop that SIEMs pull — never the other way around.
+
+## Key facts
+
+- Interaction level: high (real OSS daemons)
+- Deployment: Docker Compose + amberctl on Linux
+- Containment: nftables DNAT, egress allowlists, DNS sinkhole
+- Evidence: collector-owned netns → /var/ambercell (pcap, JSONL, flows)
+- Exfiltration path: one-way dead drop only
+- Production gates: kill bars G1–G14
+- Maintainers: Cyber Halluci Net (CHN)
+
+## Links
+
+- [Landing page](https://cyberhallucinet.github.io/AmberCell/): product overview, cells, tutorials
+- [Source repository](https://github.com/CyberHalluciNet/AmberCell): code, compose, amberctl
+- [Runbook](https://github.com/CyberHalluciNet/AmberCell/blob/main/docs/RUNBOOK.md): operator procedures
+- [Dead drop](https://github.com/CyberHalluciNet/AmberCell/blob/main/docs/DEADDROP.md): publish / pull model
+- [Providers](https://github.com/CyberHalluciNet/AmberCell/blob/main/docs/providers.md): curated / BYO Docker / remote relay
+- [Cyber Halluci Net](https://cyberhallucinet.org/): parent collective
+
+## Optional
+
+- [FAQ on the site](https://cyberhallucinet.github.io/AmberCell/#faq): short operator-facing answers
+- [Sitemap](https://cyberhallucinet.github.io/AmberCell/sitemap.xml)
